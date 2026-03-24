@@ -4,8 +4,8 @@ export const gameState = {
     isSpinning: false,
     keys: {},
     inventory: [
-        { name: 'Green seeds', type: 'green', bonus: 10, color: 0x32cd32 },
-        { name: 'Red seeds', type: 'red', bonus: 5, color: 0xff4500 },
+        { name: 'Green seeds', type: 'green', bonus: 10, color: 0x32cd32, count: 10 },
+        { name: 'Red seeds', type: 'red', bonus: 5, color: 0xff4500, count: 10 },
         null, null, null, null, null, null, null, null
     ]
 };

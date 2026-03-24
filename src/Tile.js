@@ -3,14 +3,16 @@ import { gameState } from './GameState';
 import { spinSlots } from './Casino';
 
 export class Tile extends Container {
-    constructor(type, gridX, gridY, tileSize, player, goldText, slotText, mapLayout, entityLayer) {
+    constructor(type, gridX, gridY, tileSize, player, goldText, slotText, mapLayout, entityLayer, updateInvUI) {
         super();
         this.type = type;
         this.gridX = gridX;
         this.gridY = gridY;
         this.tileSize = tileSize;
         this.player = player;
-        this.goldText = goldText; // Сохраняем ссылку на текст золота
+        this.goldText = goldText;
+        this.slotText = slotText;
+        this.updateInvUI = updateInvUI; // СОХРАНЯЕМ ФУНКЦИЮ
         this.isSolid = (type === 2);
 
         this.x = gridX * tileSize;
@@ -39,10 +41,10 @@ export class Tile extends Container {
 
         this.isGrowing = false;
         this.plantedType = null;
-        this.popUps = []; // Список активных текстов +50
+        this.popUps = [];
 
         this.eventMode = 'static';
-        this.on('pointerdown', () => this.handleClick(slotText));
+        this.on('pointerdown', () => this.handleClick());
     }
 
     drawSmartFence(g, map) {
@@ -55,7 +57,7 @@ export class Tile extends Container {
         if (isF(this.gridX + 1, this.gridY)) g.rect(mid, mid - 4, mid, 8).fill(0x4a2c16);
     }
 
-    async handleClick(slotText) {
+    async handleClick() {
         if (this.type !== 1 || gameState.isSpinning) return;
 
         const dx = (this.x + this.tileSize/2) - this.player.x;
@@ -64,7 +66,23 @@ export class Tile extends Container {
 
         if (!this.isGrowing) {
             const item = gameState.inventory[gameState.selectedSlot];
-            if (item && item.type) {
+
+            // Проверяем, есть ли предмет и есть ли у него семена
+            if (item && item.type && item.count > 0) {
+                // Уменьшаем количество семян
+                item.count--;
+
+                // Если семена закончились, удаляем предмет из слота
+                if (item.count === 0) {
+                    gameState.inventory[gameState.selectedSlot] = null;
+                }
+
+                // Обновляем UI инвентаря
+                if (this.updateInvUI) {
+                    this.updateInvUI();
+                }
+
+                // Сажаем растение
                 this.isGrowing = true;
                 this.plantedType = item;
                 this.plant.tint = item.color;
@@ -72,13 +90,13 @@ export class Tile extends Container {
             }
         } else if (this.plant.scale.x >= 1) {
             // ЛОГИКА СБОРА
-            const rewardMult = await spinSlots(slotText);
+            const rewardMult = await spinSlots(this.slotText);
             const finalReward = this.plantedType.bonus * rewardMult;
 
             if (finalReward > 0) {
                 gameState.gold += finalReward;
                 this.goldText.text = `Золото: ${gameState.gold}`;
-                this.spawnCoinText(finalReward); // Показываем +50
+                this.spawnCoinText(finalReward);
             }
 
             // Сброс грядки
@@ -87,7 +105,11 @@ export class Tile extends Container {
             this.plant.scale.set(0.1);
 
             // Очистка текста рулетки через время
-            setTimeout(() => { if(!gameState.isSpinning) slotText.text = ''; }, 1500);
+            setTimeout(() => {
+                if(!gameState.isSpinning && this.slotText) {
+                    this.slotText.text = '';
+                }
+            }, 1500);
         }
     }
 

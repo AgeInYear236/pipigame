@@ -3,9 +3,6 @@ import { gameState } from './GameState';
 import { Tile } from './Tile';
 import { UIManager } from './UIManager';
 
-const TILE_SIZE = 64;
-const PLAYER_SPEED = 4;
-
 const app = new Application();
 
 async function init() {
@@ -35,7 +32,8 @@ async function init() {
     });
 
     const goldText = new Text({ text: `Золото: 0`, style });
-    goldText.x = 20; goldText.y = 20;
+    goldText.x = 20;
+    goldText.y = 20;
 
     const slotText = new Text({ text: '', style: { ...style, fontSize: 42, fill: '#ffcc00' } });
     slotText.anchor.set(0.5);
@@ -83,30 +81,17 @@ async function init() {
         [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
     ];
 
-    // Границы мира для движения (в пикселях)
-    const worldLimitX = mapLayout[0].length * TILE_SIZE * 10;
-    const worldLimitY = mapLayout.length * TILE_SIZE * 10;
+    const TILE_SIZE = 50;
+    const PLAYER_SPEED = 4;
 
-    const tiles = [];
-    mapLayout.forEach((row, y) => {
-        row.forEach((type, x) => {
-            const tile = new Tile(
-                type, x, y,
-                TILE_SIZE,
-                player,
-                goldText,
-                slotText,
-                mapLayout,
-                entityLayer
-            );
-            groundLayer.addChild(tile);
-            tiles.push(tile);
-        });
-    });
+    const mapWidthTiles = mapLayout[0].length;
+    const mapHeightTiles = mapLayout.length;
+    const mapWidthPx = mapWidthTiles * TILE_SIZE;
+    const mapHeightPx = mapHeightTiles * TILE_SIZE;
 
     // 5. ИНВЕНТАРЬ (10 слотов)
     const invContainer = new Container();
-    const slotContainers = []; // Храним контейнеры слотов для обновления
+    const slotContainers = [];
 
     for (let i = 0; i < 10; i++) {
         const slot = new Container();
@@ -118,34 +103,20 @@ async function init() {
             .stroke({ color: i === gameState.selectedSlot ? 0xffd700 : 0xffffff, width: i === gameState.selectedSlot ? 4 : 2 });
         slot.addChild(bg);
 
-        // Иконка предмета (если есть)
-        const item = gameState.inventory[i];
-        if (item) {
-            const icon = new Graphics()
-                .circle(25, 25, 12)
-                .fill(item.color);
-            slot.addChild(icon);
-
-            // Добавляем текстовую метку для количества (на будущее)
-            const countText = new Text({
-                text: item.count ? `x${item.count}` : '',
-                style: { fill: 0xffffff, fontSize: 12, fontWeight: 'bold' }
-            });
-            countText.x = 35;
-            countText.y = 35;
-            slot.addChild(countText);
-        }
+        // Контейнер для иконки и текста
+        const itemContainer = new Container();
+        slot.addChild(itemContainer);
 
         slot.x = i * 55;
         invContainer.addChild(slot);
-        slotContainers.push({ container: slot, bg, itemIcon: item ? slot.children[1] : null });
+        slotContainers.push({ container: slot, bg, itemContainer });
     }
 
-    invContainer.x = (window.innerWidth - (10 * 55)) / 2; // Центрируем 10 слотов
+    invContainer.x = (window.innerWidth - (10 * 55)) / 2;
     invContainer.y = window.innerHeight - 70;
     ui.addChild(invContainer);
 
-// Функция обновления UI инвентаря
+    // Функция обновления UI инвентаря
     const updateInvUI = () => {
         slotContainers.forEach((slot, i) => {
             // Обновляем фон
@@ -157,36 +128,59 @@ async function init() {
                     width: i === gameState.selectedSlot ? 4 : 2
                 });
 
-            // Обновляем иконку предмета
             const item = gameState.inventory[i];
-            if (item && !slot.itemIcon) {
-                // Создаём иконку, если предмет появился
+
+            // Очищаем контейнер предмета
+            slot.itemContainer.removeChildren();
+
+            if (item && item.count > 0) {
+                // Создаём иконку
                 const icon = new Graphics()
                     .circle(25, 25, 12)
                     .fill(item.color);
-                slot.container.addChild(icon);
-                slot.itemIcon = icon;
-            } else if (!item && slot.itemIcon) {
-                // Удаляем иконку, если предмет исчез
-                slot.container.removeChild(slot.itemIcon);
-                slot.itemIcon.destroy();
-                slot.itemIcon = null;
-            } else if (item && slot.itemIcon) {
-                // Обновляем цвет иконки, если изменился
-                slot.itemIcon.clear()
-                    .circle(25, 25, 12)
-                    .fill(item.color);
+                slot.itemContainer.addChild(icon);
+
+                // Создаём текст с количеством
+                const countText = new Text({
+                    text: `x${item.count}`,
+                    style: { fill: 0xffffff, fontSize: 12, fontWeight: 'bold', stroke: { color: 0x000000, width: 2 } }
+                });
+                countText.x = 35;
+                countText.y = 35;
+                slot.itemContainer.addChild(countText);
             }
         });
 
         // Обновляем текст под инвентарём
         const currentItem = gameState.inventory[gameState.selectedSlot];
-        UIManager.updateItemLabel(itemLabel, currentItem ? currentItem.name : "Empty");
+        if (itemLabel) {
+            UIManager.updateItemLabel(itemLabel, currentItem && currentItem.count > 0 ? `${currentItem.name}` : "Пусто");
+        }
     };
 
+    // Начальное обновление инвентаря
     updateInvUI();
 
-    // 6. УПРАВЛЕНИЕ
+    // 6. СОЗДАНИЕ ТАЙЛОВ
+    const tiles = [];
+    mapLayout.forEach((row, y) => {
+        row.forEach((type, x) => {
+            const tile = new Tile(
+                type, x, y,
+                TILE_SIZE,
+                player,
+                goldText,
+                slotText,
+                mapLayout,
+                entityLayer,
+                updateInvUI
+            );
+            groundLayer.addChild(tile);
+            tiles.push(tile);
+        });
+    });
+
+    // 7. УПРАВЛЕНИЕ
     window.addEventListener('keydown', (e) => {
         gameState.keys[e.code] = true;
         if (e.code.startsWith('Digit')) {
@@ -195,9 +189,12 @@ async function init() {
             updateInvUI();
         }
     });
-    window.addEventListener('keyup', (e) => gameState.keys[e.code] = false);
 
-    // 7. ИГРОВОЙ ЦИКЛ
+    window.addEventListener('keyup', (e) => {
+        gameState.keys[e.code] = false;
+    });
+
+    // 8. ИГРОВОЙ ЦИКЛ
     app.ticker.add((time) => {
         const dt = time.deltaTime;
         let nextX = player.x;
@@ -209,18 +206,23 @@ async function init() {
         if (gameState.keys['KeyD']) nextX += PLAYER_SPEED * dt;
 
         const checkWall = (tx, ty) => {
-            // Базовая проверка границ массива
-            if (tx < 0 || tx > worldLimitX || ty < 0 || ty > worldLimitY) return true;
-
             const gx = Math.floor(tx / TILE_SIZE);
             const gy = Math.floor(ty / TILE_SIZE);
-            const target = tiles.find(t => t.gridX === gx && t.gridY === gy);
-            return target && target.isSolid;
+
+            // Выход за пределы карты = стена
+            if (gx < 0 || gx >= mapWidthTiles || gy < 0 || gy >= mapHeightTiles) return true;
+
+            const tile = tiles[gy * mapWidthTiles + gx];
+            return tile && tile.isSolid;
         };
 
-        // Двигаемся только если впереди нет стены и мы не выходим за границы экрана
+        // Двигаемся только если впереди нет стены
         if (!checkWall(nextX, player.y)) player.x = nextX;
         if (!checkWall(player.x, nextY)) player.y = nextY;
+
+        // Ограничиваем движение в пределах карты
+        player.x = Math.max(0, Math.min(player.x, mapWidthPx - 1));
+        player.y = Math.max(0, Math.min(player.y, mapHeightPx - 1));
 
         // Y-SORTING
         entityLayer.children.sort((a, b) => {
@@ -229,12 +231,14 @@ async function init() {
             return aPos - bPos;
         });
 
+        // Обновляем тайлы
         tiles.forEach(t => t.update(dt));
     });
 
+    // 9. ОБРАБОТКА РАЗМЕРА ОКНА
     window.addEventListener('resize', () => {
         app.renderer.resize(window.innerWidth, window.innerHeight);
-        invContainer.x = (window.innerWidth - invContainer.width) / 2;
+        invContainer.x = (window.innerWidth - (10 * 55)) / 2;
         invContainer.y = window.innerHeight - 70;
         slotText.x = window.innerWidth / 2;
         itemLabel.x = window.innerWidth / 2;
