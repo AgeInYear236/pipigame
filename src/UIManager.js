@@ -1,4 +1,4 @@
-import { Text, TextStyle, Container } from 'pixi.js';
+import { Text, TextStyle } from 'pixi.js';
 
 export class UIManager {
     static style = new TextStyle({
@@ -9,8 +9,14 @@ export class UIManager {
         dropShadow: { alpha: 0.5, blur: 4, distance: 2 }
     });
 
-    // Метод для создания всплывающего текста монет
-    static spawnPopUp(amount, x, y, parent) {
+    /**
+     * @param {number} amount - сумма
+     * @param {number} x - поз X
+     * @param {number} y - поз Y
+     * @param {Container} parent - куда добавить
+     * @param {Ticker} ticker - тикер приложения
+     */
+    static spawnPopUp(amount, x, y, parent, ticker) {
         const popUp = new Text({
             text: `+${amount} 🪙`,
             style: this.style
@@ -21,33 +27,22 @@ export class UIManager {
         popUp.y = y;
         parent.addChild(popUp);
 
-        // Анимация: летим вверх и исчезаем
-        let elapsed = 0;
         const animate = (time) => {
             const dt = time.deltaTime;
-            elapsed += dt;
-
-            popUp.y -= 1.5 * dt; // Скорость полета вверх
-            popUp.alpha -= 0.02 * dt; // Скорость исчезновения
+            popUp.y -= 2 * dt;
+            popUp.alpha -= 0.015 * dt;
 
             if (popUp.alpha <= 0) {
-                parent.removeChild(popUp);
-                app.ticker.remove(animate);
+                ticker.remove(animate);
+                if (popUp.parent) popUp.parent.removeChild(popUp);
                 popUp.destroy();
             }
         };
 
-        // Мы передаем app.ticker глобально или через импорт,
-        // но проще добавить в существующий ticker в main.js через массив
-        return animate;
+        ticker.add(animate);
     }
 
-    // Метод для обновления текста над инвентарем
     static updateItemLabel(labelObj, itemName) {
-        if (!itemName) {
-            labelObj.text = "";
-            return;
-        }
-        labelObj.text = `${itemName}`;
+        labelObj.text = itemName || "Пусто";
     }
 }

@@ -2,6 +2,8 @@ import { Application, Graphics, Container, Text, TextStyle } from 'pixi.js';
 import { gameState } from './GameState';
 import { Tile } from './Tile';
 import { UIManager } from './UIManager';
+import { DebugConsole } from './DebugConsole';
+import { setDebugConsole } from './Casino';
 
 const app = new Application();
 
@@ -50,6 +52,14 @@ async function init() {
 
     ui.addChild(goldText, slotText, itemLabel);
 
+    // ИСПРАВЛЕННАЯ КОНСОЛЬ
+    const debugConsole = new DebugConsole(400, 500);
+    debugConsole.x = window.innerWidth - 410;
+    debugConsole.y = window.innerHeight - 510;
+    ui.addChild(debugConsole);
+
+    setDebugConsole(debugConsole);
+
     // 3. ИГРОК
     const player = new Graphics()
         .circle(0, 0, 18)
@@ -59,7 +69,7 @@ async function init() {
     player.y = 200;
     entityLayer.addChild(player);
 
-    // 4. КАРТА
+    // 4. ТВОЯ ПОЛНАЯ КАРТА (Восстановлена целиком)
     const mapLayout = [
         [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
@@ -83,30 +93,21 @@ async function init() {
 
     const TILE_SIZE = 50;
     const PLAYER_SPEED = 4;
-
     const mapWidthTiles = mapLayout[0].length;
     const mapHeightTiles = mapLayout.length;
     const mapWidthPx = mapWidthTiles * TILE_SIZE;
     const mapHeightPx = mapHeightTiles * TILE_SIZE;
 
-    // 5. ИНВЕНТАРЬ (10 слотов)
+    // 5. ТВОЙ ПОЛНЫЙ ИНВЕНТАРЬ (10 слотов)
     const invContainer = new Container();
     const slotContainers = [];
 
     for (let i = 0; i < 10; i++) {
         const slot = new Container();
-
-        // Фон слота
-        const bg = new Graphics()
-            .roundRect(0, 0, 50, 50, 8)
-            .fill(i === gameState.selectedSlot ? 0x555555 : 0x333333)
-            .stroke({ color: i === gameState.selectedSlot ? 0xffd700 : 0xffffff, width: i === gameState.selectedSlot ? 4 : 2 });
+        const bg = new Graphics();
         slot.addChild(bg);
-
-        // Контейнер для иконки и текста
         const itemContainer = new Container();
         slot.addChild(itemContainer);
-
         slot.x = i * 55;
         invContainer.addChild(slot);
         slotContainers.push({ container: slot, bg, itemContainer });
@@ -116,10 +117,8 @@ async function init() {
     invContainer.y = window.innerHeight - 70;
     ui.addChild(invContainer);
 
-    // Функция обновления UI инвентаря
     const updateInvUI = () => {
         slotContainers.forEach((slot, i) => {
-            // Обновляем фон
             slot.bg.clear()
                 .roundRect(0, 0, 50, 50, 8)
                 .fill(i === gameState.selectedSlot ? 0x555555 : 0x333333)
@@ -129,36 +128,25 @@ async function init() {
                 });
 
             const item = gameState.inventory[i];
-
-            // Очищаем контейнер предмета
             slot.itemContainer.removeChildren();
 
             if (item && item.count > 0) {
-                // Создаём иконку
-                const icon = new Graphics()
-                    .circle(25, 25, 12)
-                    .fill(item.color);
+                const icon = new Graphics().circle(25, 25, 12).fill(item.color);
                 slot.itemContainer.addChild(icon);
 
-                // Создаём текст с количеством
                 const countText = new Text({
                     text: `x${item.count}`,
                     style: { fill: 0xffffff, fontSize: 12, fontWeight: 'bold', stroke: { color: 0x000000, width: 2 } }
                 });
-                countText.x = 35;
-                countText.y = 35;
+                countText.x = 35; countText.y = 35;
                 slot.itemContainer.addChild(countText);
             }
         });
 
-        // Обновляем текст под инвентарём
         const currentItem = gameState.inventory[gameState.selectedSlot];
-        if (itemLabel) {
-            UIManager.updateItemLabel(itemLabel, currentItem && currentItem.count > 0 ? `${currentItem.name}` : "Пусто");
-        }
+        UIManager.updateItemLabel(itemLabel, currentItem && currentItem.count > 0 ? currentItem.name : "Пусто");
     };
 
-    // Начальное обновление инвентаря
     updateInvUI();
 
     // 6. СОЗДАНИЕ ТАЙЛОВ
@@ -173,7 +161,8 @@ async function init() {
                 slotText,
                 mapLayout,
                 entityLayer,
-                updateInvUI
+                updateInvUI,
+                debugConsole
             );
             groundLayer.addChild(tile);
             tiles.push(tile);
@@ -208,30 +197,23 @@ async function init() {
         const checkWall = (tx, ty) => {
             const gx = Math.floor(tx / TILE_SIZE);
             const gy = Math.floor(ty / TILE_SIZE);
-
-            // Выход за пределы карты = стена
             if (gx < 0 || gx >= mapWidthTiles || gy < 0 || gy >= mapHeightTiles) return true;
-
-            const tile = tiles[gy * mapWidthTiles + gx];
-            return tile && tile.isSolid;
+            return tiles[gy * mapWidthTiles + gx].isSolid;
         };
 
-        // Двигаемся только если впереди нет стены
         if (!checkWall(nextX, player.y)) player.x = nextX;
         if (!checkWall(player.x, nextY)) player.y = nextY;
 
-        // Ограничиваем движение в пределах карты
         player.x = Math.max(0, Math.min(player.x, mapWidthPx - 1));
         player.y = Math.max(0, Math.min(player.y, mapHeightPx - 1));
 
-        // Y-SORTING
+        // ТВОЙ Y-SORTING
         entityLayer.children.sort((a, b) => {
             const aPos = (a === player) ? a.y : a.y + TILE_SIZE;
             const bPos = (b === player) ? b.y : b.y + TILE_SIZE;
             return aPos - bPos;
         });
 
-        // Обновляем тайлы
         tiles.forEach(t => t.update(dt));
     });
 

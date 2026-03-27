@@ -3,7 +3,7 @@ import { gameState } from './GameState';
 import { spinSlots } from './Casino';
 
 export class Tile extends Container {
-    constructor(type, gridX, gridY, tileSize, player, goldText, slotText, mapLayout, entityLayer, updateInvUI) {
+    constructor(type, gridX, gridY, tileSize, player, goldText, slotText, mapLayout, entityLayer, updateInvUI, debugConsole) {
         super();
         this.type = type;
         this.gridX = gridX;
@@ -14,6 +14,7 @@ export class Tile extends Container {
         this.slotText = slotText;
         this.updateInvUI = updateInvUI; // СОХРАНЯЕМ ФУНКЦИЮ
         this.isSolid = (type === 2);
+        this.debugConsole = debugConsole;
 
         this.x = gridX * tileSize;
         this.y = gridY * tileSize;
@@ -25,11 +26,12 @@ export class Tile extends Container {
         this.addChild(bg);
 
         // 2. Растение
-        this.plant = new Graphics().rect(16, 16, 32, 32).fill(0xffffff);
+        this.plant = new Graphics().rect(4, 4, 32, 32).fill(0xffffff);
         this.plant.visible = false;
         this.plant.scale.set(0.1);
+        this.plant.x = this.tileSize / 2 - 16;
+        this.plant.y = this.tileSize / 2 - 16;
         this.addChild(this.plant);
-
         // 3. Визуал забора
         if (type === 2 && entityLayer) {
             this.fenceVisual = new Graphics();
@@ -87,29 +89,127 @@ export class Tile extends Container {
                 this.plantedType = item;
                 this.plant.tint = item.color;
                 this.plant.visible = true;
+
+                if (this.debugConsole) {
+                    this.debugConsole.logPlant(item.type === 'green' ? 'зелёных' : 'красных');
+                }
             }
         } else if (this.plant.scale.x >= 1) {
             // ЛОГИКА СБОРА
-            const rewardMult = await spinSlots(this.slotText);
-            const finalReward = this.plantedType.bonus * rewardMult;
+            const spinResult = await spinSlots(this.slotText);
 
+            // Показываем сообщение от казино
+            if (spinResult.message && this.slotText) {
+                this.slotText.text = spinResult.message;
+            }
+
+            // Рассчитываем награду
+            let finalReward = 0;
+            if (spinResult.rewardGold > 0) {
+                finalReward = this.plantedType.bonus * spinResult.rewardGold;
+            }
+
+            // Начисляем золото
             if (finalReward > 0) {
                 gameState.gold += finalReward;
                 this.goldText.text = `Золото: ${gameState.gold}`;
                 this.spawnCoinText(finalReward);
             }
 
+            // Обрабатываем изменение семян
+            if (spinResult.seedChange !== 0) {
+                const currentSlot = gameState.selectedSlot;
+                const currentItem = gameState.inventory[currentSlot];
+
+                if (spinResult.seedChange > 0) {
+                    // Даём семечко
+                    if (currentItem && currentItem.type === this.plantedType.type) {
+                        // Если в выбранном слоте уже есть такие же семена
+                        currentItem.count += spinResult.seedChange;
+                    } else if (!currentItem) {
+                        // Если слот пустой, создаём новый предмет
+                        gameState.inventory[currentSlot] = {
+                            name: this.plantedType.name,
+                            type: this.plantedType.type,
+                            bonus: this.plantedType.bonus,
+                            color: this.plantedType.color,
+                            count: spinResult.seedChange
+                        };
+                    } else {
+                        // Если в слоте другие семена, ищем пустой слот или слот с такими же семенами
+                        let found = false;
+                        for (let i = 0; i < gameState.inventory.length; i++) {
+                            const item = gameState.inventory[i];
+                            if (item && item.type === this.plantedType.type) {
+                                item.count += spinResult.seedChange;
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            // Ищем пустой слот
+                            for (let i = 0; i < gameState.inventory.length; i++) {
+                                if (!gameState.inventory[i]) {
+                                    gameState.inventory[i] = {
+                                        name: this.plantedType.name,
+                                        type: this.plantedType.type,
+                                        bonus: this.plantedType.bonus,
+                                        color: this.plantedType.color,
+                                        count: spinResult.seedChange
+                                    };
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } else if (spinResult.seedChange < 0) {
+                    // Тратим семечки (отрицательное значение)
+                    const seedsToLose = Math.abs(spinResult.seedChange);
+
+                    if (currentItem && currentItem.type === this.plantedType.type) {
+                        // Уменьшаем количество в текущем слоте
+                        currentItem.count -= seedsToLose;
+
+                        // Если семена закончились, удаляем слот
+                        if (currentItem.count <= 0) {
+                            gameState.inventory[currentSlot] = null;
+                        }
+                    } else {
+                        // Ищем слот с такими семенами
+                        for (let i = 0; i < gameState.inventory.length; i++) {
+                            const item = gameState.inventory[i];
+                            if (item && item.type === this.plantedType.type) {
+                                item.count -= seedsToLose;
+                                if (item.count <= 0) {
+                                    gameState.inventory[i] = null;
+                                }
+                                break;
+                            }
+                        }
+                    }
+
+                    // Логируем сбор
+                    if (finalReward > 0 && this.debugConsole) {
+                        this.debugConsole.logHarvest(finalReward, spinResult.rewardGold);
+                    }
+
+                    // Логируем изменение семян
+                    if (spinResult.seedChange !== 0 && this.debugConsole) {
+                        const seedType = this.plantedType.type === 'green' ? 'зелёных' : 'красных';
+                        this.debugConsole.logSeedChange(spinResult.seedChange, seedType);
+                    }
+                }
+
+                // Обновляем UI инвентаря
+                if (this.updateInvUI) {
+                    this.updateInvUI();
+                }
+            }
+
             // Сброс грядки
             this.isGrowing = false;
             this.plant.visible = false;
             this.plant.scale.set(0.1);
-
-            // Очистка текста рулетки через время
-            setTimeout(() => {
-                if(!gameState.isSpinning && this.slotText) {
-                    this.slotText.text = '';
-                }
-            }, 1500);
         }
     }
 
