@@ -12,27 +12,31 @@ export class Tile extends Container {
         this.player = player;
         this.goldText = goldText;
         this.slotText = slotText;
-        this.updateInvUI = updateInvUI; // СОХРАНЯЕМ ФУНКЦИЮ
+        this.updateInvUI = updateInvUI;
         this.isSolid = (type === 2);
         this.debugConsole = debugConsole;
 
         this.x = gridX * tileSize;
         this.y = gridY * tileSize;
 
-        // 1. Земля
-        const bg = new Graphics()
-            .rect(0, 0, tileSize, tileSize)
-            .fill(type === 1 ? 0x6b4226 : 0x3a7d32);
-        this.addChild(bg);
+        // СОСТОЯНИЯ
+        this.isGrowing = false;
+        this.isWatered = false; // Полит ли тайл
+        this.plantedType = null;
+        this.popUps = [];
+        this.baseGrowthSpeed = 0.0005; // СДЕЛАЛИ РОСТ НАМНОГО МЕДЛЕННЕЕ
 
-        // 2. Растение
+        this.bg = new Graphics();
+        this.drawBackground();
+        this.addChild(this.bg);
+
         this.plant = new Graphics().rect(4, 4, 32, 32).fill(0xffffff);
         this.plant.visible = false;
         this.plant.scale.set(0.1);
         this.plant.x = this.tileSize / 2 - 16;
         this.plant.y = this.tileSize / 2 - 16;
         this.addChild(this.plant);
-        // 3. Визуал забора
+
         if (type === 2 && entityLayer) {
             this.fenceVisual = new Graphics();
             this.drawSmartFence(this.fenceVisual, mapLayout);
@@ -41,12 +45,26 @@ export class Tile extends Container {
             entityLayer.addChild(this.fenceVisual);
         }
 
-        this.isGrowing = false;
-        this.plantedType = null;
-        this.popUps = [];
-
         this.eventMode = 'static';
         this.on('pointerdown', () => this.handleClick());
+    }
+
+    drawBackground() {
+        this.bg.clear();
+
+        // Цвет земли: если полито, делаем темнее/синее
+        let color = this.type === 1 ? 0x6b4226 : 0x3a7d32;
+        if (this.type === 1 && this.isWatered) {
+            color = 0x3d2b1f; // Темная влажная земля
+        }
+
+        this.bg.rect(0, 0, this.tileSize, this.tileSize).fill(color);
+
+        if (this.type === 1) {
+            // Рисуем рамку. Если полито — синюю, если нет — коричневую
+            const strokeColor = this.isWatered ? 0x00aaff : 0x553311;
+            this.bg.stroke({ color: strokeColor, width: this.isWatered ? 2 : 1, alignment: 1 });
+        }
     }
 
     drawSmartFence(g, map) {
@@ -60,56 +78,77 @@ export class Tile extends Container {
     }
 
     async handleClick() {
-        if (this.type !== 1 || gameState.isSpinning) return;
+        if (this.isSolid || gameState.isSpinning) return;
 
         const dx = (this.x + this.tileSize/2) - this.player.x;
         const dy = (this.y + this.tileSize/2) - this.player.y;
         if (Math.sqrt(dx*dx + dy*dy) > this.tileSize * 1.8) return;
 
-        if (!this.isGrowing) {
-            const item = gameState.inventory[gameState.selectedSlot];
+        const item = gameState.inventory[gameState.selectedSlot];
 
-            // Проверяем, есть ли предмет и есть ли у него семена
-            if (item && item.type && item.count > 0) {
-                // Уменьшаем количество семян
+        // 1. ИСПОЛЬЗОВАНИЕ ТЯПКИ
+        // 3. ЛОГИКА ТЯПКИ (Работает на ТРАВЕ - type 0)
+        if (this.type === 0) {
+            if (item && item.toolType === 'hoe' && item.count > 0) {
+                this.type = 1; // Превращаем в грядку
                 item.count--;
 
-                // Если семена закончились, удаляем предмет из слота
-                if (item.count === 0) {
+                if (item.count <= 0) {
                     gameState.inventory[gameState.selectedSlot] = null;
+                    if (this.debugConsole) this.debugConsole.addMessage("Тяпка сломалась!", "#ff4444", "❌");
                 }
 
-                // Обновляем UI инвентаря
-                if (this.updateInvUI) {
-                    this.updateInvUI();
+                this.drawBackground();
+                if (this.updateInvUI) this.updateInvUI();
+                if (this.debugConsole) this.debugConsole.addMessage(`Вспахано! Прочность: ${item.count || 0}`, '#8bc34a', '🚜');
+            }
+            return; // Выходим, чтобы не пытаться посадить семена в этот же клик
+        }
+
+        // 2. ИСПОЛЬЗОВАНИЕ ЛЕЙКИ
+        if (this.type === 1 && item && item.toolType === 'can' && item.count > 0) {
+            if (!this.isWatered) {
+                this.isWatered = true;
+                item.count--; // Минус прочность
+
+                if (item.count <= 0) {
+                    gameState.inventory[gameState.selectedSlot] = null;
+                    if (this.debugConsole) this.debugConsole.addMessage("Лейка сломалась!", "#ff4444", "❌");
                 }
 
-                // Сажаем растение
+                this.drawBackground();
+                if (this.updateInvUI) this.updateInvUI();
+                if (this.debugConsole) this.debugConsole.addMessage(`Полито! Осталось воды: ${item.count || 0}`, '#00aaff', '💧');
+            }
+            return;
+        }
+
+        // 3. ЛОГИКА ПОСАДКИ
+        if (this.type === 1 && !this.isGrowing) {
+            if (item && item.type && item.count > 0 && item.type !== 'tool') {
+                item.count--;
+                if (item.count === 0) gameState.inventory[gameState.selectedSlot] = null;
+                if (this.updateInvUI) this.updateInvUI();
+
                 this.isGrowing = true;
-                this.plantedType = item;
+                this.plantedType = { ...item };
                 this.plant.tint = item.color;
                 this.plant.visible = true;
 
-                if (this.debugConsole) {
-                    this.debugConsole.logPlant(item.type === 'green' ? 'зелёных' : 'красных');
-                }
+                if (this.debugConsole) this.debugConsole.logPlant(item.name);
             }
-        } else if (this.plant.scale.x >= 1) {
-            // ЛОГИКА СБОРА
+        }
+        // 4. ЛОГИКА СБОРА
+        else if (this.isGrowing && this.plant.scale.x >= 1) {
             const spinResult = await spinSlots(this.slotText);
 
-            // Показываем сообщение от казино
-            if (spinResult.message && this.slotText) {
-                this.slotText.text = spinResult.message;
-            }
+            if (spinResult.message && this.slotText) this.slotText.text = spinResult.message;
 
-            // Рассчитываем награду
             let finalReward = 0;
             if (spinResult.rewardGold > 0) {
                 finalReward = this.plantedType.bonus * spinResult.rewardGold;
             }
 
-            // Начисляем золото
             if (finalReward > 0) {
                 gameState.gold += finalReward;
                 this.goldText.text = `Золото: ${gameState.gold}`;
@@ -124,10 +163,8 @@ export class Tile extends Container {
                 if (spinResult.seedChange > 0) {
                     // Даём семечко
                     if (currentItem && currentItem.type === this.plantedType.type) {
-                        // Если в выбранном слоте уже есть такие же семена
                         currentItem.count += spinResult.seedChange;
                     } else if (!currentItem) {
-                        // Если слот пустой, создаём новый предмет
                         gameState.inventory[currentSlot] = {
                             name: this.plantedType.name,
                             type: this.plantedType.type,
@@ -136,18 +173,16 @@ export class Tile extends Container {
                             count: spinResult.seedChange
                         };
                     } else {
-                        // Если в слоте другие семена, ищем пустой слот или слот с такими же семенами
                         let found = false;
                         for (let i = 0; i < gameState.inventory.length; i++) {
-                            const item = gameState.inventory[i];
-                            if (item && item.type === this.plantedType.type) {
-                                item.count += spinResult.seedChange;
+                            const it = gameState.inventory[i];
+                            if (it && it.type === this.plantedType.type) {
+                                it.count += spinResult.seedChange;
                                 found = true;
                                 break;
                             }
                         }
                         if (!found) {
-                            // Ищем пустой слот
                             for (let i = 0; i < gameState.inventory.length; i++) {
                                 if (!gameState.inventory[i]) {
                                     gameState.inventory[i] = {
@@ -163,44 +198,27 @@ export class Tile extends Container {
                         }
                     }
                 } else if (spinResult.seedChange < 0) {
-                    // Тратим семечки (отрицательное значение)
                     const seedsToLose = Math.abs(spinResult.seedChange);
-
                     if (currentItem && currentItem.type === this.plantedType.type) {
-                        // Уменьшаем количество в текущем слоте
                         currentItem.count -= seedsToLose;
-
-                        // Если семена закончились, удаляем слот
-                        if (currentItem.count <= 0) {
-                            gameState.inventory[currentSlot] = null;
-                        }
+                        if (currentItem.count <= 0) gameState.inventory[currentSlot] = null;
                     } else {
-                        // Ищем слот с такими семенами
                         for (let i = 0; i < gameState.inventory.length; i++) {
-                            const item = gameState.inventory[i];
-                            if (item && item.type === this.plantedType.type) {
-                                item.count -= seedsToLose;
-                                if (item.count <= 0) {
-                                    gameState.inventory[i] = null;
-                                }
+                            const it = gameState.inventory[i];
+                            if (it && it.type === this.plantedType.type) {
+                                it.count -= seedsToLose;
+                                if (it.count <= 0) gameState.inventory[i] = null;
                                 break;
                             }
                         }
                     }
-
-                    // Логируем сбор
-                    if (finalReward > 0 && this.debugConsole) {
-                        this.debugConsole.logHarvest(finalReward, spinResult.rewardGold);
-                    }
-
-                    // Логируем изменение семян
-                    if (spinResult.seedChange !== 0 && this.debugConsole) {
-                        const seedType = this.plantedType.type === 'green' ? 'зелёных' : 'красных';
-                        this.debugConsole.logSeedChange(spinResult.seedChange, seedType);
-                    }
                 }
 
-                // Обновляем UI инвентаря
+                if (this.debugConsole) {
+                    const seedType = this.plantedType.type === 'green' ? 'зелёных' : 'красных';
+                    this.debugConsole.logSeedChange(spinResult.seedChange, seedType);
+                }
+
                 if (this.updateInvUI) {
                     this.updateInvUI();
                 }
@@ -208,12 +226,13 @@ export class Tile extends Container {
 
             // Сброс грядки
             this.isGrowing = false;
+            this.isWatered = false; // После сбора земля высыхает
             this.plant.visible = false;
             this.plant.scale.set(0.1);
+            this.drawBackground();
         }
     }
 
-    // Внутренний метод для всплывающего текста
     spawnCoinText(amount) {
         const style = new TextStyle({
             fill: '#ffd700',
@@ -230,13 +249,13 @@ export class Tile extends Container {
     }
 
     update(dt) {
-        // Логика роста
         if (this.isGrowing && this.plant.scale.x < 1) {
-            this.plant.scale.x += 0.005 * dt;
-            this.plant.scale.y += 0.005 * dt;
+            // РОСТ: если полито, скорость в 2 раза выше
+            const multiplier = this.isWatered ? 2 : 1;
+            this.plant.scale.x += this.baseGrowthSpeed * multiplier * dt;
+            this.plant.scale.y += this.baseGrowthSpeed * multiplier * dt;
         }
 
-        // Анимация всплывающих текстов
         for (let i = this.popUps.length - 1; i >= 0; i--) {
             const txt = this.popUps[i];
             txt.y -= 1 * dt;

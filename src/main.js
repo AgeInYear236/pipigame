@@ -4,6 +4,7 @@ import { Tile } from './Tile';
 import { UIManager } from './UIManager';
 import { DebugConsole } from './DebugConsole';
 import { setDebugConsole } from './Casino';
+import { Shop } from './Shop';
 
 const app = new Application();
 
@@ -68,6 +69,8 @@ async function init() {
     player.x = 200;
     player.y = 200;
     entityLayer.addChild(player);
+
+
 
     // 4. ТВОЯ ПОЛНАЯ КАРТА (Восстановлена целиком)
     const mapLayout = [
@@ -147,6 +150,9 @@ async function init() {
         UIManager.updateItemLabel(itemLabel, currentItem && currentItem.count > 0 ? currentItem.name : "Пусто");
     };
 
+    const shop = new Shop(app, updateInvUI, debugConsole, goldText);
+    ui.addChild(shop);
+
     updateInvUI();
 
     // 6. СОЗДАНИЕ ТАЙЛОВ
@@ -225,6 +231,7 @@ async function init() {
         slotText.x = window.innerWidth / 2;
         itemLabel.x = window.innerWidth / 2;
         itemLabel.y = window.innerHeight - 100;
+        shop.resize();
     });
 }
 
