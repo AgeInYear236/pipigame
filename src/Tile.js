@@ -57,9 +57,14 @@ export class Tile extends Container {
     drawBackground() {
         this.bg.clear();
 
+        // ПРОВЕРКА: Считается ли плитка политой сейчас?
+        // Она полита, если: её полили вручную ИЛИ на улице идет дождь
+        const showingAsWatered = this.isWatered || (gameState.currentWeather === 'rainy');
+
         let color = 0x3a7d32; // Трава
         if (this.type === 1) {
-            color = this.isWatered ? 0x3d2b1f : 0x6b4226; // Грядка (темнее, если полита)
+            // Используем наше новое условие для выбора цвета
+            color = showingAsWatered ? 0x3d2b1f : 0x6b4226;
         } else if (this.type === 3) {
             color = 0x808080; // Камень колодца
         }
@@ -81,10 +86,10 @@ export class Tile extends Container {
             this.bg.rect(10, 10, this.tileSize - 20, this.tileSize - 20).fill(0x00aaff);
         }
 
-        // Обводка для грядки
         if (this.type === 1) {
-            const strokeColor = this.isWatered ? 0x00aaff : 0x553311;
-            this.bg.stroke({ color: strokeColor, width: this.isWatered ? 2 : 1, alignment: 1 });
+            // Тоже используем showingAsWatered для цвета обводки
+            const strokeColor = showingAsWatered ? 0x00aaff : 0x553311;
+            this.bg.stroke({ color: strokeColor, width: showingAsWatered ? 2 : 1, alignment: 1 });
         }
     }
 
@@ -234,13 +239,29 @@ export class Tile extends Container {
     }
 
     update(dt) {
+        // 1. ЛОГИКА РОСТА
         if (this.isGrowing && this.plant.scale.x < 1) {
-            const multiplier = this.isWatered ? 2 : 1; // Политое растет в 2 раза быстрее
+            // Растение растет быстрее, если: полито вручную ИЛИ идет дождь
+            const effectivelyWatered = this.isWatered || (gameState.currentWeather === 'rainy');
+            const multiplier = effectivelyWatered ? 2 : 1;
+
             this.plant.scale.x += this.baseGrowthSpeed * multiplier * dt;
             this.plant.scale.y += this.baseGrowthSpeed * multiplier * dt;
         }
 
-        // Анимация всплывающих цифр золота
+        // 2. ВИЗУАЛЬНОЕ ОБНОВЛЕНИЕ ПРИ СМЕНЕ ПОГОДЫ
+        // Чтобы не перерисовывать каждый кадр (это нагрузка), проверяем только грядки
+        if (this.type === 1) {
+            const currentlyShowingWatered = (this.color === 0x3d2b1f); // Проверка текущего цвета
+            const shouldShowWatered = this.isWatered || (gameState.currentWeather === 'rainy');
+
+            // Если визуальное состояние не соответствует погоде — перерисовываем
+            if (currentlyShowingWatered !== shouldShowWatered) {
+                this.drawBackground();
+            }
+        }
+
+        // 3. Анимация всплывающих цифр (твой старый код)
         for (let i = this.popUps.length - 1; i >= 0; i--) {
             const txt = this.popUps[i];
             txt.y -= 1 * dt;

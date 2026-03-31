@@ -7,8 +7,25 @@ export class TimeSystem {
         this.gameTimeScale = 2;
         this.timer = 0;
 
-        this.isRaining = false;
-        this.rainChance = 0.17; // 30% вероятность дождя каждый новый день
+        // Шанс дождя
+        this.rainChance = 0.17;
+
+        // Инициализируем погоду при старте
+        this.isRaining = Math.random() < this.rainChance;
+        this.nextDayIsRaining = Math.random() < this.rainChance;
+
+        // Инициализируем температуру
+        this.currentTemp = this.generateTemp(this.isRaining);
+        this.nextDayTemp = this.generateTemp(this.nextDayIsRaining);
+    }
+
+    // Вспомогательный метод для генерации температуры
+    generateTemp(isRainy) {
+        if (isRainy) {
+            return Math.floor(Math.random() * 5) + 14; // 14-18°C
+        } else {
+            return Math.floor(Math.random() * 8) + 20; // 20-27°C
+        }
     }
 
     update(dt, debugConsole) {
@@ -23,7 +40,7 @@ export class TimeSystem {
             this.hour++;
             this.minute = 0;
 
-            // Если идет дождь, он может закончиться через несколько часов (например, в 18:00)
+            // Дождь заканчивается вечером
             if (this.isRaining && this.hour >= 18) {
                 this.isRaining = false;
                 if (debugConsole) debugConsole.addMessage("Дождь закончился", "#00ffff", "☀️");
@@ -33,24 +50,43 @@ export class TimeSystem {
         if (this.hour >= 24) {
             this.hour = 0;
             this.day++;
-            this.checkForRain(debugConsole);
+            this.handleNewDay(debugConsole);
         }
     }
 
-    checkForRain(debugConsole) {
-        // Проверка на дождь в начале каждого дня
-        this.isRaining = Math.random() < this.rainChance;
+    handleNewDay(debugConsole) {
+        // 1. Погода "на завтра" становится текущей
+        this.isRaining = this.nextDayIsRaining;
+        this.currentTemp = this.nextDayTemp;
+
+        // 2. Генерируем новый прогноз на следующее "завтра"
+        this.nextDayIsRaining = Math.random() < this.rainChance;
+        this.nextDayTemp = this.generateTemp(this.nextDayIsRaining);
 
         if (debugConsole) {
             debugConsole.addMessage(`--- ДЕНЬ ${this.day} ---`, "#ffffff", "📅");
             if (this.isRaining) {
-                debugConsole.addMessage("Сегодня обещают дождь!", "#00aaff", "🌧️");
+                debugConsole.addMessage("Начался дождь!", "#00aaff", "🌧️");
+            } else {
+                debugConsole.addMessage("Сегодня солнечно", "#ffcc00", "☀️");
             }
         }
+        return this.day >= 2;
     }
 
     getTimeString() {
         return `${this.hour.toString().padStart(2, '0')}:${this.minute.toString().padStart(2, '0')}`;
+    }
+
+    // Данные для телефона
+    getWeatherForecast() {
+        return {
+            todayIcon: this.isRaining ? '🌧️' : '☀️',
+            todayTemp: this.currentTemp,
+            tomorrowIcon: this.nextDayIsRaining ? '🌧️' : '☀️',
+            tomorrowTemp: this.nextDayTemp,
+            tomorrowIsRainy: this.nextDayIsRaining
+        };
     }
 
     getNightIntensity() {
@@ -58,7 +94,6 @@ export class TimeSystem {
         const diffFromNoon = Math.abs(totalMinutes - 720);
         let intensity = diffFromNoon / 720;
 
-        // Во время дождя днем делаем небо чуть мрачнее
         if (this.isRaining && (this.hour > 6 && this.hour < 18)) {
             intensity += 0.2;
         }

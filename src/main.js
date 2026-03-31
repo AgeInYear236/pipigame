@@ -7,6 +7,9 @@ import { setDebugConsole } from './Casino';
 import { Shop } from './Shop';
 import { TimeSystem } from './TimeSystem';
 import {SaveSystem} from "./SaveSystem.js";
+import {Phone} from "./Phone.js";
+import {Environment} from "./Environment.js";
+import {MainMenu} from "./MainMenu.js";
 
 const app = new Application();
 
@@ -112,9 +115,9 @@ async function init() {
     const mapLayout = [
         [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        [2, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        [2, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        [2, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+        [2, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+        [2, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+        [2, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
@@ -172,18 +175,239 @@ async function init() {
 
     updateInvUI();
 
-    // 6. СОЗДАНИЕ ТАЙЛОВ
+
+    const phone = new Phone(app, debugConsole, timeSystem);
+    ui.addChild(phone);
+
+    const housePrice = 2500;
+    const houseContainer = new Container();
+
+// Позиционируем строго по сетке (например, отступаем 2 тайла сверху и слева)
+    const gridX = 2;
+    const gridY = 12;
+    houseContainer.x = gridX * 50;
+    houseContainer.y = gridY * 50;
+
+// Графика руин (Серый блок 3x3 тайла)
+    const houseBg = new Graphics();
+
+// Функция отрисовки состояния дома
+    const drawHouseState = (isBuilt) => {
+        houseBg.clear();
+        if (!isBuilt) {
+            // РУИНЫ: Рисуем "кучу камней" в пределах 150x150
+            houseBg.rect(0, 0, 150, 150).fill({ color: 0x777777, alpha: 1 });
+            // Добавим текстуру камней (просто прямоугольники поменьше)
+            for(let i=0; i<5; i++) {
+                houseBg.rect(Math.random()*100, Math.random()*100, 40, 30).fill(0x555555);
+            }
+            houseBg.stroke({ color: 0x333333, width: 4 });
+        } else {
+            // ПОСТРОЕННЫЙ ДОМ: Яркий блок 3x3
+            houseBg.rect(0, 0, 150, 150).fill(0x8d6e63); // Стены
+            houseBg.poly([0, 50, 75, 0, 150, 50]).fill(0xd32f2f); // Простая крыша сверху
+            houseBg.rect(60, 100, 30, 50).fill(0x3e2723); // Дверь
+            houseBg.stroke({ color: 0x221100, width: 5 });
+        }
+    };
+
+    drawHouseState(gameState.houseBuilt);
+
+    const houseLabel = new Text({
+        text: "СТАРЫЕ РУИНЫ",
+        style: { fill: '#ffffff', fontSize: 16, fontWeight: 'bold', stroke: '#000000', strokeThickness: 4 }
+    });
+    houseLabel.anchor.set(0.5);
+    houseLabel.x = 75; // Центр блока 150/2
+    houseLabel.y = 75;
+
+    houseContainer.addChild(houseBg, houseLabel);
+    houseContainer.eventMode = 'static';
+    houseContainer.cursor = 'pointer';
+
+// Логика клика
+    houseContainer.on('pointerdown', () => {
+        if (gameState.houseBuilt) {
+            debugConsole.addMessage("Твой уютный уголок.", "#00ff00");
+            return;
+        }
+
+        if (gameState.gold >= housePrice) {
+            gameState.gold -= housePrice;
+            gameState.houseBuilt = true;
+            goldText.text = `Золото: ${gameState.gold}`;
+
+            drawHouseState(true);
+            houseLabel.text = "МОЙ ДОМ";
+
+            phone.addIncomingMessage("Старый Фермер", "Ничего себе хоромы! Поздравляю с новосельем, сосед.");
+            debugConsole.addMessage("Дом построен!", "#ffd700");
+        } else {
+            debugConsole.addMessage(`Не хватает золота! Нужно ${housePrice}.`, "#ff4444");
+        }
+    });
+
+    world.addChild(houseContainer);
+
+
+// 6. СОЗДАНИЕ ТАЙЛОВ
     const tiles = [];
     mapLayout.forEach((row, y) => {
         row.forEach((type, x) => {
-            const tile = new Tile(type, x, y, TILE_SIZE, player, goldText, slotText, mapLayout, entityLayer, updateInvUI, debugConsole);
+            // Проверяем, находится ли текущий тайл под будущим домом
+            const isUnderHouse = (
+                x >= gridX && x < gridX + 3 &&
+                y >= gridY && y < gridY + 3
+            );
+
+            // Если под домом — принудительно ставим тип, который нельзя вскопать (например, 2 или 10)
+            // Либо передаем доп. параметр в конструктор Tile
+            const finalType = isUnderHouse ? 2 : type;
+
+            const tile = new Tile(finalType, x, y, TILE_SIZE, player, goldText, slotText, mapLayout, entityLayer, updateInvUI, debugConsole);
+
+            // Добавим свойство объекту тайла, чтобы он знал, что он "фундамент"
+            if (isUnderHouse) {
+                tile.isStatic = true;
+                tile.eventMode = 'none'; // Отключаем клики по этим тайлам вообще
+            }
+
             groundLayer.addChild(tile);
             tiles.push(tile);
         });
     });
 
+
     const shop = new Shop(app, updateInvUI, debugConsole, goldText, tiles);
     ui.addChild(shop);
+
+    // Иконка телефона (Кнопка)
+    const phoneBtn = new Graphics()
+        .roundRect(0, 0, 50, 50, 10)
+        .fill(0x333333)
+        .stroke({ color: 0x00aaff, width: 2 });
+    phoneBtn.x = window.innerWidth - 140;
+    phoneBtn.y = 20;
+    phoneBtn.eventMode = 'static';
+    phoneBtn.cursor = 'pointer';
+
+    const phoneIcon = new Text({ text: "📱", style: { fontSize: 30 } });
+    phoneIcon.anchor.set(0.5);
+    phoneIcon.x = 25; phoneIcon.y = 25;
+    phoneBtn.addChild(phoneIcon);
+
+    phoneBtn.on('pointerdown', () => phone.toggle());
+    ui.addChild(phoneBtn);
+
+    const environment = new Environment(app, timeSystem);
+    app.stage.addChild(environment);
+    environment.zIndex = 1000; // Поднимаем в самый верх
+
+// ТЕСТОВЫЙ ВЫЗОВ (можно удалить потом)
+    setTimeout(() => {
+        phone.addIncomingMessage("Неизвестный", "Привет! Это твой новый телефон. Здесь будет вся необходимая информация!");
+    }, 3000);
+
+    // 1. Приветственное сообщение через 5 секунд после старта
+    setTimeout(() => {
+        phone.addIncomingMessage(
+            "Старый Фермер",
+            "Привет, новичок! Вижу, ты взялся за дело. Чтобы ферма процветала, нужно подготовить землю. Вспахай 67 клеток (сделай из них грядки), и я подкину тебе 50 золотых на развитие!"
+        );
+        gameState.quests.plowCells.active = true;
+    }, 5000);
+
+// 2. Функция проверки квеста (создадим её внутри init или рядом)
+    const checkQuests = () => {
+        const q = gameState.quests.plowCells;
+
+        // Если квест активен и еще не выполнен
+        if (q.active && !q.completed) {
+            // Считаем сколько сейчас грядок (тип 1) на карте
+            const plowedCount = tiles.filter(t => t.type === 1).length;
+            q.current = plowedCount;
+
+            if (q.current >= q.target) {
+                q.completed = true;
+                q.active = false;
+
+                // Выдаем награду
+                gameState.gold += q.reward;
+                goldText.text = `Золото: ${gameState.gold}`; // Обновляем UI золота
+
+                // Пишем в телефон и консоль
+                phone.addIncomingMessage("Старый Фермер", "Отличная работа! Земля готова к посадкам. Вот твоя награда — 50 золотых. Трать с умом!");
+                debugConsole.addMessage("Квест выполнен: Вспахано 67 клеток! +50 золота", "#00ff00", "🏆");
+
+                // ЧЕРЕЗ 10 СЕКУНД ПОСЛЕ ПЕРВОГО КВЕСТА ДАЕМ ВТОРОЙ
+                setTimeout(() => {
+                    startWaterQuest();
+                }, 10000);
+            }
+        }
+
+        // --- ВТОРОЙ КВЕСТ (Полив) ---
+        const q2 = gameState.quests.waterCells;
+        if (q2.active && !q2.completed) {
+            // Считаем сколько грядок сейчас полито (isWatered === true)
+            const wateredCount = tiles.filter(t => t.type === 1 && t.isWatered).length;
+            q2.current = wateredCount;
+
+            if (q2.current >= q2.target) {
+                q2.completed = true;
+                q2.active = false;
+
+                gameState.gold += q2.reward;
+                goldText.text = `Золото: ${gameState.gold}`;
+
+                phone.addIncomingMessage("Старый Фермер", "Вижу, земля намокла! Растения любят воду. Держи еще 50 золотых. Теперь ты готов к настоящим посадкам!");
+                debugConsole.addMessage("Квест выполнен: Полито 10 грядок! +50 золота", "#00ff00", "🏆");
+            }
+        }
+    };
+
+    // Функция запуска второго квеста
+    const startWaterQuest = () => {
+        phone.addIncomingMessage(
+            "Старый Фермер",
+            "Слушай, земля-то сухая! Возьми лейку (или дождись дождя) и полей хотя бы 10 грядок. Без воды ничего не вырастет. Сделаешь — отсыпаю еще 50 золотых!"
+        );
+        gameState.quests.waterCells.active = true;
+    };
+
+    function payTaxes() {
+        const taxAmount = 50;
+        gameState.gold -= taxAmount;
+
+        // Обновляем UI золота
+        goldText.text = `Золото: ${gameState.gold}`;
+
+        // Отправляем сообщение в телефон
+        phone.addIncomingMessage(
+            "Налоговая служба",
+            `Уважаемый фермер! С вашего счета списано ${taxAmount} золотых в качестве ежедневного земельного налога. Благодарим за вклад в развитие округа!`
+        );
+
+        if (debugConsole) {
+            debugConsole.addMessage(`Списан налог: -${taxAmount} золота`, "#ff4444", "💸");
+        }
+
+        // Проверка на банкротство (если ушел в минус)
+        if (gameState.gold < 0) {
+            phone.addIncomingMessage("Банк", "Внимание! Ваш баланс отрицательный. Срочно продайте урожай, иначе ферма будет арестована!");
+        }
+    }
+
+    let gameStarted = false;
+
+    const startLevel = () => {
+        gameStarted = true;
+        // Можно здесь отправить первое приветственное сообщение
+        phone.addIncomingMessage("Дедушка", "Привет! Рад, что ты приехал. Начни с грядок, налоги сами себя не заплатят!");
+    };
+
+    const mainMenu = new MainMenu(app, startLevel);
+    app.stage.addChild(mainMenu);
 
     // 7. УПРАВЛЕНИЕ
     window.addEventListener('keydown', (e) => {
@@ -200,9 +424,33 @@ async function init() {
     app.ticker.add((ticker) => {
         const dt = ticker.deltaTime;
 
+
+        if (!gameStarted) {
+            if (mainMenu && !mainMenu.destroyed) {
+                mainMenu.update(dt);
+            }
+            return;
+        }
+
+        checkQuests();
+        const wasNewDay = timeSystem.hour === 0 && timeSystem.minute === 0 && timeSystem.timer === 0;
+
+        environment.update(dt);
         // Время и Ночь
-        timeSystem.update(dt);
+        timeSystem.update(dt * 10);
         timeText.text = `🕒 ${timeSystem.getTimeString()}`;
+
+        if (timeSystem.hour === 0 && timeSystem.minute === 0 && Math.floor(timeSystem.timer) === 0) {
+            if (timeSystem.day >= 3 && !gameState.taxPaidToday) {
+                payTaxes();
+                gameState.taxPaidToday = true; // Флаг, чтобы не списывать весь час 00:00
+            }
+        }
+
+        // Сбрасываем флаг налогов в 01:00, чтобы быть готовыми к следующему дню
+        if (timeSystem.hour === 1) {
+            gameState.taxPaidToday = false;
+        }
 
         const night = timeSystem.getNightIntensity();
         nightOverlay.alpha = night.alpha;
@@ -261,6 +509,18 @@ async function init() {
         });
 
         tiles.forEach(t => t.update(dt));
+
+        if (timeSystem.day === 2 && !gameState.houseQuestSent) {
+            gameState.houseQuestSent = true;
+
+            // Задержка, чтобы письмо не пришло ровно в 00:00
+            setTimeout(() => {
+                phone.addIncomingMessage(
+                    "Старый Фермер",
+                    "Доброе утро! Слушай, я тут проходил мимо твоих руин... Сердце кровью обливается. Было бы неплохо построить там приличный домик. На материалы уйдет где-то 2500 золотых, но оно того стоит — фермер без дома как сапожник без сапог!"
+                );
+            }, 5000);
+        }
     });
 
     window.addEventListener('resize', () => {
@@ -271,6 +531,8 @@ async function init() {
         slotText.x = window.innerWidth / 2;
         itemLabel.x = window.innerWidth / 2;
         shop.resize();
+        phoneBtn.x = window.innerWidth - 70;
+        phone.resize();
     });
 
 
