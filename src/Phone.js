@@ -118,7 +118,7 @@ export class Phone extends Container {
         const bg = new Graphics().roundRect(8, 35, this.phoneWidth - 16, this.phoneHeight - 80, 12).fill(0x0a0a0a);
         this.weatherContainer.addChild(bg);
 
-        const title = new Text({ text: "WEATHER", style: { fill: '#00aaff', fontSize: 14, fontWeight: '900' } });
+        const title = new Text({ text: "PROBABILITY REPORT", style: { fill: '#00aaff', fontSize: 14, fontWeight: '900' } });
         title.x = this.phoneWidth / 2; title.y = 18; title.anchor.set(0.5, 0);
         this.weatherContainer.addChild(title);
 
@@ -133,19 +133,37 @@ export class Phone extends Container {
 
     initTabs() {
         const tabY = this.phoneHeight - 65;
+        const tabBarHeight = 45; // Высота области табов
+
+        // 1. Создаем непрозрачный фон для панели табов
+        // Он должен быть чуть выше самих кнопок, чтобы полностью закрыть щель снизу
+        this.tabBarBg = new Graphics()
+            .rect(8, tabY-20, this.phoneWidth - 16, tabBarHeight)
+            .fill(0x1a1a1a) // Тот же цвет, что и у корпуса телефона
+            .stroke({ color: 0x333333, width: 2, alignment: 0 }); // Верхняя граница-разделитель
+
+        this.addChild(this.tabBarBg);
+
+        // 2. Иконки табов (твой существующий код)
         this.msgTab = new Text({ text: "💬", style: { fontSize: 20 } });
-        this.msgTab.x = 60; this.msgTab.y = tabY;
+        this.msgTab.x = 60;
+        this.msgTab.y = tabY;
         this.msgTab.eventMode = 'static';
         this.msgTab.cursor = 'pointer';
         this.msgTab.on('pointerdown', () => this.switchTab('messages'));
 
         this.weatherTab = new Text({ text: "☁️", style: { fontSize: 20 } });
-        this.weatherTab.x = 140; this.weatherTab.y = tabY;
+        this.weatherTab.x = 140;
+        this.weatherTab.y = tabY;
         this.weatherTab.eventMode = 'static';
         this.weatherTab.cursor = 'pointer';
         this.weatherTab.on('pointerdown', () => this.switchTab('weather'));
 
         this.addChild(this.msgTab, this.weatherTab);
+
+        // Важно: кнопка HOME должна быть поверх фона табов
+        // Если ты вызываешь initTabs до создания homeBtn, то всё ок.
+        // Если после — добавь в конец: this.addChild(this.homeBtn);
     }
 
     switchTab(tab) {

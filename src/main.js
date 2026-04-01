@@ -10,6 +10,7 @@ import {SaveSystem} from "./SaveSystem.js";
 import {Phone} from "./Phone.js";
 import {Environment} from "./Environment.js";
 import {MainMenu} from "./MainMenu.js";
+import {HintSystem} from "./HintSystem.js";
 
 const app = new Application();
 
@@ -52,8 +53,8 @@ async function init() {
     });
 
     const goldText = new Text({
-        text: `Золото: ${gameState.gold}`,
-        style: { fill: '#ffd700', fontSize: 24, fontWeight: 'bold' }
+        text: `Кредиты: ${gameState.gold}`,
+        style: { fill: '#0560F5', fontSize: 24, fontWeight: 'bold' }
     });
     goldText.x = 20; goldText.y = 20;
 
@@ -85,6 +86,9 @@ async function init() {
     debugConsole.y = window.innerHeight - 510;
     ui.addChild(debugConsole);
     setDebugConsole(debugConsole);
+
+    const hintSystem = new HintSystem();
+    app.stage.addChild(hintSystem);
 
     const rainContainer = new Container();
     app.stage.addChild(rainContainer); // Дождь будет под UI, но над миром
@@ -126,7 +130,7 @@ async function init() {
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+        [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
@@ -235,7 +239,7 @@ async function init() {
         if (gameState.gold >= housePrice) {
             gameState.gold -= housePrice;
             gameState.houseBuilt = true;
-            goldText.text = `Золото: ${gameState.gold}`;
+            goldText.text = `Кредиты: ${gameState.gold}`;
 
             drawHouseState(true);
             houseLabel.text = "МОЙ ДОМ";
@@ -333,7 +337,7 @@ async function init() {
 
                 // Выдаем награду
                 gameState.gold += q.reward;
-                goldText.text = `Золото: ${gameState.gold}`; // Обновляем UI золота
+                goldText.text = `Кредиты: ${gameState.gold}`; // Обновляем UI золота
 
                 // Пишем в телефон и консоль
                 phone.addIncomingMessage("Старый Фермер", "Отличная работа! Земля готова к посадкам. Вот твоя награда — 50 золотых. Трать с умом!");
@@ -358,10 +362,58 @@ async function init() {
                 q2.active = false;
 
                 gameState.gold += q2.reward;
-                goldText.text = `Золото: ${gameState.gold}`;
+                goldText.text = `Кредиты: ${gameState.gold}`;
 
                 phone.addIncomingMessage("Старый Фермер", "Вижу, земля намокла! Растения любят воду. Держи еще 50 золотых. Теперь ты готов к настоящим посадкам!");
                 debugConsole.addMessage("Квест выполнен: Полито 10 грядок! +50 золота", "#00ff00", "🏆");
+                setTimeout(() => {
+                    startq3();
+                }, 5000);
+            }
+        }
+
+        const q3 = gameState.quests.blueSeeds;
+
+        if (q3.active && !q3.completed) {
+
+            // Отправляем вводное сообщение от Ассоциации
+            phone.addIncomingMessage(
+                "Ассоциация",
+                "Впечатляющие результаты! 💧 Мы видим в тебе потенциал. \n\nНовое задание: заработай 500 монет чистой прибыли, и мы откроем тебе доступ к секретной разработке — семенам Indigo Pulse. \n\nУдачи, фермер!"
+            );
+
+        }
+
+        // 2. ПРОВЕРКА: Условие победы (500 монет)
+        if (gameState.quests.blueSeeds && gameState.quests.blueSeeds.active && !gameState.quests.blueSeeds.unlocked) {
+            if (gameState.gold >= gameState.quests.blueSeeds.threshold) {
+
+                gameState.quests.blueSeeds.unlocked = true;
+                gameState.quests.blueSeeds.active = false; // Квест выполнен
+
+                // Выдаем 2 синих семени в первый свободный слот (null)
+                const slot = gameState.inventory.findIndex(s => s === null);
+                if (slot !== -1) {
+                    gameState.inventory[slot] = {
+                        name: 'Indigo Pulse',
+                        type: 'blue',
+                        bonus: 50,
+                        color: 0x00aaff,
+                        count: 2
+                    };
+                }
+
+                // Финальное СМС с поздравлением
+                phone.addIncomingMessage(
+                    "Ассоциация",
+                    "Грандиозно! 🎰 500 монет в кармане. \n\nКак и обещали, Indigo Pulse теперь в твоем распоряжении. Они уже в инвентаре, а дополнительные партии ищи в магазине. \n\nБереги их, они светятся в темноте!"
+                );
+
+                // Обновляем UI и Магазин
+                updateInvUI();
+                if (shop) shop.createShopWindow(); // Чтобы семена появились в списке
+
+                if (debugConsole) debugConsole.addMessage("Квест выполнен: Доступ к Indigo Pulse!", "#ffd700");
             }
         }
     };
@@ -374,13 +426,17 @@ async function init() {
         );
         gameState.quests.waterCells.active = true;
     };
+    const startq3 = () => {
+
+        gameState.quests.blueSeeds.active = true;
+    };
 
     function payTaxes() {
         const taxAmount = 50;
         gameState.gold -= taxAmount;
 
         // Обновляем UI золота
-        goldText.text = `Золото: ${gameState.gold}`;
+        goldText.text = `Кредиты: ${gameState.gold}`;
 
         // Отправляем сообщение в телефон
         phone.addIncomingMessage(
@@ -389,7 +445,7 @@ async function init() {
         );
 
         if (debugConsole) {
-            debugConsole.addMessage(`Списан налог: -${taxAmount} золота`, "#ff4444", "💸");
+            debugConsole.addMessage(`Комиссия Заведения списана. Удачи в следующем раунде.: -${taxAmount} кредитов`, "#ff4444", "💸");
         }
 
         // Проверка на банкротство (если ушел в минус)
@@ -416,6 +472,16 @@ async function init() {
             let n = parseInt(e.code.replace('Digit', ''));
             gameState.selectedSlot = n === 0 ? 9 : n - 1;
             updateInvUI();
+        }
+
+        if (e.code === 'KeyI') {
+            const currentItem = gameState.inventory[gameState.selectedSlot];
+
+            if (currentItem) {
+                hintSystem.show(currentItem);
+            } else {
+                if (debugConsole) debugConsole.addMessage("Руки пусты", "#ff4444");
+            }
         }
     });
     window.addEventListener('keyup', (e) => gameState.keys[e.code] = false);

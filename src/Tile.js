@@ -16,6 +16,7 @@ export class Tile extends Container {
         this.debugConsole = debugConsole;
         this.isSolid = (type === 2); // Забор непроходим
         this.isFertilized = false;
+        this.fertilizerPoints = []; // Здесь будем хранить фиксированные позиции точек
 
         this.x = gridX * tileSize;
         this.y = gridY * tileSize;
@@ -68,17 +69,21 @@ export class Tile extends Container {
         } else if (this.type === 3) {
             color = 0x808080; // Камень колодца
         }
+        if (this.type === 4) {
+            color = 0x555555; // Темно-серый цвет для "руин" пугала
+        }
+        if (this.type === 4) {
+            this.bg.rect(8, 4, this.tileSize - 16, this.tileSize - 8).fill(0x1a1a1a); // Тело автомата
+            this.bg.rect(12, 8, this.tileSize - 24, 10).fill(0x333333); // Экранчик
+        }
 
         this.bg.rect(0, 0, this.tileSize, this.tileSize).fill(color);
 
         // ЭФФЕКТ УДОБРЕНИЯ: Рисуем маленькие белые точки поверх земли
         if (this.type === 1 && this.isFertilized) {
-            for (let i = 0; i < 5; i++) {
-                // Случайные точки в пределах тайла
-                const rx = Math.random() * (this.tileSize - 4);
-                const ry = Math.random() * (this.tileSize - 4);
-                this.bg.rect(rx, ry, 2, 2).fill(0xffffff);
-            }
+            this.fertilizerPoints.forEach(p => {
+                this.bg.rect(p.x, p.y, 2, 2).fill(0xffffff);
+            });
         }
 
         // Рисуем воду, если это колодец
@@ -109,7 +114,7 @@ export class Tile extends Container {
 
     async handleClick() {
         // Если забор или идет анимация слотов - игнорируем
-        if (this.isSolid || gameState.isSpinning) return;
+        if (this.isSolid || this.type === 4 || gameState.isSpinning) return;
 
         // Проверка дистанции от игрока до плитки
         const dx = (this.x + this.tileSize / 2) - this.player.x;
@@ -121,6 +126,14 @@ export class Tile extends Container {
         if (this.type === 1 && item && item.type === 'fertilizer') {
             if (!this.isFertilized) {
                 this.isFertilized = true;
+                // Генерируем позиции ОДИН РАЗ
+                this.fertilizerPoints = [];
+                for (let i = 0; i < 5; i++) {
+                    this.fertilizerPoints.push({
+                        x: Math.random() * (this.tileSize - 4),
+                        y: Math.random() * (this.tileSize - 4)
+                    });
+                }
                 item.count--;
                 if (item.count <= 0) gameState.inventory[gameState.selectedSlot] = null;
 
@@ -151,7 +164,7 @@ export class Tile extends Container {
                 if (item.count <= 0) gameState.inventory[gameState.selectedSlot] = null;
                 this.drawBackground();
                 if (this.updateInvUI) this.updateInvUI();
-                if (this.debugConsole) this.debugConsole.addMessage("Земля готова!", "#8bc34a");
+                if (this.debugConsole) this.debugConsole.addMessage("Сектор активен. Принимаются ставки.", "#8bc34a");
             }
             return;
         }
@@ -175,7 +188,7 @@ export class Tile extends Container {
 
                 this.drawBackground();
                 if (this.updateInvUI) this.updateInvUI();
-                if (this.debugConsole) this.debugConsole.addMessage("Полито!", "#00aaff");
+                if (this.debugConsole) this.debugConsole.addMessage("Цикл ускорен. Вероятность заноса: Оптимальная.", "#00aaff");
             } else if (item.count <= 0) {
                 if (this.debugConsole) this.debugConsole.addMessage("Вода кончилась!", "#ff4444");
             }
