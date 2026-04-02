@@ -3,14 +3,14 @@ export const gameState = {
     quests: {
         plowCells: {
             active: false,
-            target: 1,
+            target: 67,
             current: 0,
             completed: false,
             reward: 50
         },
         waterCells: {
             active: false,
-            target: 1,
+            target: 25,
             current: 0,
             completed: false,
             reward: 50
@@ -36,8 +36,8 @@ export const gameState = {
     activeTab: 'messages',
     taxPaidToday: false,
     inventory: [
-        { name: 'Slot-Lime [Low Volatility]', type: 'green', bonus: 10, color: 0x32cd32, count: 3 },
-        { name: 'Roulette-Cherry [High Stakes]', type: 'red', bonus: 3, color: 0xff4500, count: 10 },
+        { name: 'Slot-Lime [Low Volatility]', type: 'green', bonus: 3, color: 0x32cd32, count: 10 },
+        { name: 'Roulette-Cherry [High Stakes]', type: 'red', bonus: 10, color: 0xff4500, count: 3 },
         { name: 'Bio-Slot Preparator', type: 'tool', toolType: 'hoe', color: 0xaaaaaa, count: 5 },
         { name: 'Liquid Luck Dispenser', type: 'tool', toolType: 'can', color: 0x00aaff, count: 5 },
         { name: 'Bucket Luck', type: 'tool', toolType: 'bucket', color: 0x708090,  count: 5},

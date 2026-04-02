@@ -13,35 +13,41 @@ export class DebugConsole extends Container {
     }
 
     createUI() {
+        // Фон: глубокий черный с неоновой синей рамкой (в цвет телефона)
         this.bg = new Graphics()
             .roundRect(0, 0, this.w, this.h, 10)
-            .fill({ color: 0x000000, alpha: 0.85 })
-            .stroke({ color: 0xffd700, width: 2 });
+            .fill({ color: 0x000000, alpha: 0.9 })
+            .stroke({ color: 0x00aaff, width: 2 });
         this.addChild(this.bg);
 
-        const titleStyle = new TextStyle({ fill: '#ffd700', fontSize: 14, fontWeight: 'bold' });
-        this.title = new Text({ text: '📜 ЛОГ СОБЫТИЙ 📜', style: titleStyle });
+        const titleStyle = new TextStyle({
+            fill: '#00aaff',
+            fontSize: 12,
+            fontWeight: '900',
+            letterSpacing: 2
+        });
+        this.title = new Text({ text: '█ SYSTEM MONITOR v.1.04', style: titleStyle });
         this.title.x = 10;
         this.title.y = 5;
         this.addChild(this.title);
 
-        this.line = new Graphics().rect(0, 25, this.w, 2).fill(0xffd700);
+        this.line = new Graphics().rect(0, 25, this.w, 1).fill(0x333333);
         this.addChild(this.line);
 
         this.messagesContainer = new Container();
         this.addChild(this.messagesContainer);
 
-        // МАСКА: Теперь строго привязана к области под заголовком
         this.maskGraphics = new Graphics()
             .rect(0, 30, this.w, this.h - 40)
             .fill(0xffffff);
         this.addChild(this.maskGraphics);
         this.messagesContainer.mask = this.maskGraphics;
 
+        // Кнопка очистки теперь называется "PURGE"
         this.clearBtn = new Graphics()
-            .roundRect(this.w - 70, 5, 60, 20, 5)
-            .fill(0x8f4a4a)
-            .stroke({ color: 0xffffff, width: 1 });
+            .roundRect(this.w - 75, 5, 65, 18, 4)
+            .fill(0x330000)
+            .stroke({ color: 0xff4444, width: 1 });
         this.clearBtn.eventMode = 'static';
         this.clearBtn.cursor = 'pointer';
         this.clearBtn.on('pointerdown', (e) => {
@@ -50,14 +56,14 @@ export class DebugConsole extends Container {
         });
 
         const clearText = new Text({
-            text: 'Очистить',
-            style: { fill: 0xffffff, fontSize: 10, fontWeight: 'bold' }
+            text: 'PURGE LOG',
+            style: { fill: 0xff4444, fontSize: 9, fontWeight: 'bold' }
         });
-        clearText.x = this.w - 62;
+        clearText.x = this.w - 70;
         clearText.y = 8;
         this.addChild(this.clearBtn, clearText);
 
-        this.addMessage('🎮 Игра запущена', '#4caf50');
+        this.addMessage('CORE: Подключение к сети установлено...', '#00ff00', '🔗');
     }
 
     setupDrag() {
@@ -86,11 +92,11 @@ export class DebugConsole extends Container {
         this.on('pointerupoutside', end);
     }
 
-    addMessage(text, color = '#ffffff', icon = '📌') {
-        const timestamp = new Date().toLocaleTimeString('ru-RU');
-        const msg = { text: `${timestamp} ${icon} ${text}`, color };
+    addMessage(text, color = '#cccccc', icon = '>>') {
+        const timestamp = new Date().toLocaleTimeString('ru-RU', { hour12: false });
+        const msg = { text: `[${timestamp}] ${icon} ${text}`, color };
 
-        this.messages.unshift(msg); // Новые сообщения в начало
+        this.messages.unshift(msg);
         if (this.messages.length > this.maxMessages) this.messages.pop();
 
         this.refreshMessages();
@@ -98,15 +104,15 @@ export class DebugConsole extends Container {
 
     refreshMessages() {
         this.messagesContainer.removeChildren();
-        let currentY = 30; // Начальная точка отрисовки под линией
+        let currentY = 30;
 
         this.messages.forEach((msg) => {
             const txt = new Text({
                 text: msg.text,
                 style: {
                     fill: msg.color,
-                    fontSize: 12,
-                    fontFamily: 'monospace',
+                    fontSize: 11,
+                    fontFamily: 'monospace', // Важно для стиля терминала
                     wordWrap: true,
                     wordWrapWidth: this.w - 20
                 }
@@ -114,24 +120,33 @@ export class DebugConsole extends Container {
             txt.x = 10;
             txt.y = currentY;
             this.messagesContainer.addChild(txt);
-            currentY += txt.height + 4;
+            currentY += txt.height + 2;
         });
     }
 
     clear() {
         this.messages = [];
         this.refreshMessages();
-        this.addMessage('🧹 Лог очищен', '#ffd700');
+        this.addMessage('LOG: Данные стерты по запросу пользователя', '#ff4444', '🧹');
     }
 
-    logSpin(combination, result, rewardGold, seedChange) {
-        let color = rewardGold > 0 ? '#4caf50' : (seedChange < 0 ? '#f44336' : '#ffffff');
-        let msg = `${combination} → ${result}`;
-        if (rewardGold > 0) msg += ` (+${rewardGold} золота)`;
+    // Переписанные методы под лор казино
+    logSpin(combination, result, rewardGold) {
+        let color = rewardGold > 0 ? '#00ff00' : '#888888';
+        let msg = `SPIN: [${combination}] >> ${result}`;
+        if (rewardGold > 0) msg += ` (+${rewardGold} CR)`;
         this.addMessage(msg, color, '🎰');
     }
 
-    logPlant(plantType) { this.addMessage(`Посажено: ${plantType}`, '#8bc34a', '🌱'); }
-    logHarvest(gold, mult) { this.addMessage(`Сбор: +${gold} (x${mult})`, '#4caf50', '💚'); }
-    logSeedChange(amount, type) { this.addMessage(`${amount > 0 ? '+' : ''}${amount} семян ${type}`, '#ffd700', '🎁'); }
+    logPlant(plantType) {
+        this.addMessage(`СТАВКА: Активирован протокол ${plantType}`, '#00aaff', '💾');
+    }
+
+    logHarvest(gold, mult) {
+        this.addMessage(`ВЫПЛАТА: +${gold} CR (Множитель x${mult})`, '#00ff00', '💎');
+    }
+
+    logSeedChange(amount, type) {
+        this.addMessage(`ИНВЕНТАРЬ: ${amount > 0 ? 'Загружено' : 'Списано'} ${Math.abs(amount)} ед. ${type}`, '#ffd700', '📦');
+    }
 }

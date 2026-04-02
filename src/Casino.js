@@ -10,6 +10,7 @@ export async function spinSlots(targetText, plantedData = { bonus: 1, isFertiliz
     gameState.isSpinning = true;
     let res = [0, 0, 0];
 
+    // Визуализация спина (рандомизация чисел в UI)
     for (let i = 0; i < 12; i++) {
         res = [
             Math.floor(Math.random() * 3),
@@ -23,7 +24,6 @@ export async function spinSlots(targetText, plantedData = { bonus: 1, isFertiliz
     gameState.isSpinning = false;
     const combination = res.join(' - ');
     const countZeros = res.filter(v => v === 0).length;
-    const sumValues = res.reduce((a, b) => a + b, 0);
     const isAllSame = res[0] === res[1] && res[1] === res[2];
 
     let result = {
@@ -33,68 +33,68 @@ export async function spinSlots(targetText, plantedData = { bonus: 1, isFertiliz
         icon: '🎰'
     };
 
-    // --- ЛОГИКА МАТЕМАТИКИ ---
+    // --- ЛОГИКА КАЗИНО-БИОЛОГИИ ---
 
     if (countZeros === 3) {
-        // 3 нуля - забирают семечко (но семя уже потрачено при посадке, так что просто 0)
-        result.message = 'ПОЛНЫЙ НОЛЬ';
-        result.calcText = 'Семя потеряно';
+        // 0-0-0
+        result.message = 'DEAD SPIN / ПОЛНЫЙ ЗЕРО';
+        result.calcText = 'Сектор пуст';
         result.icon = '💀';
         result.rewardGold = 0;
 
     } else if (countZeros === 2) {
-        // 2 нуля - ничего не дают
-        result.message = 'НИЧЕГО';
-        result.calcText = '0💰';
+        // Два нуля
+        result.message = 'MISS / МИМО';
+        result.calcText = '0 CR';
         result.icon = '😐';
         result.rewardGold = 0;
 
     } else if (countZeros === 1) {
-        // 1 ноль - фиксированное количество монет (без учета удобрений)
-        // Допустим, фикса = бонус семени (или можно поставить просто 5-10)
+        // Один ноль (Фикса)
         const fixedAmount = plantedData.bonus;
-        result.message = 'ФИКСА (1 ноль)';
-        result.calcText = `${fixedAmount}💰 (удобрение не действует)`;
+        result.message = 'MINIMUM PAYOUT / ФИКСА';
+        result.calcText = `${fixedAmount} CR (RTP Booster игнорируется)`;
         result.icon = '🪙';
         result.rewardGold = fixedAmount;
 
     } else {
-        // НУЛЕЙ НЕТ - Самая прибыльная часть
-        result.icon = '💰';
+        // НУЛЕЙ НЕТ - Успешная комбинация
+        result.icon = '💎';
 
         if (isAllSame) {
             if (res[0] === 1) {
-                // 1-1-1 -> x3 прибыль
+                // 1-1-1
                 result.rewardGold = plantedData.bonus * 3;
-                result.message = 'ДЖЕКПОТ 111';
-                result.calcText = `${plantedData.bonus}💰 × 3`;
+                result.message = 'JACKPOT [1-1-1]';
+                result.calcText = `${plantedData.bonus} CR × 3`;
             } else if (res[0] === 2) {
-                // 2-2-2 -> x5 прибыль
+                // 2-2-2
                 result.rewardGold = plantedData.bonus * 5;
-                result.message = 'СУПЕР ДЖЕКПОТ 222';
-                result.calcText = `${plantedData.bonus}💰 × 5`;
+                result.message = 'ULTRA COMBO [2-2-2]';
+                result.calcText = `${plantedData.bonus} CR × 5`;
                 result.icon = '🔥';
             }
         } else {
-            // Множитель (сумма / 2)
+            // Множитель на основе суммы
+            const sumValues = res.reduce((a, b) => a + b, 0);
             const multiplier = sumValues / 2;
             result.rewardGold = Math.floor(plantedData.bonus * multiplier);
-            result.message = `МНОЖИТЕЛЬ x${multiplier}`;
-            result.calcText = `${plantedData.bonus}💰 × ${multiplier}`;
+            result.message = `MULTIPLIER x${multiplier}`;
+            result.calcText = `${plantedData.bonus} CR × ${multiplier}`;
         }
 
-        // Применяем удобрение ТОЛЬКО если нет нулей
+        // Применяем RTP Booster (удобрение)
         if (plantedData.isFertilized) {
             const bonus = Math.floor(result.rewardGold * 0.5);
             result.rewardGold += bonus;
-            result.calcText += ' + ✨50%';
+            result.calcText += ' + [RTP+50%]';
         }
     }
 
-    // --- ВЫВОД В ЛОГ ---
+    // --- ВЫВОД В ТЕРМИНАЛ (DebugConsole) ---
     if (debugConsole) {
-        const color = result.rewardGold > 0 ? '#ffcc00' : '#888888';
-        const logMsg = `${combination} → ${result.message} (${result.calcText} = ${result.rewardGold}💰)`;
+        const color = result.rewardGold > 0 ? '#00ff00' : '#ff4444';
+        const logMsg = `[${combination}] >> ${result.message} (${result.rewardGold} CR)`;
         debugConsole.addMessage(logMsg, color, result.icon);
     }
 

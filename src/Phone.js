@@ -2,11 +2,11 @@ import { Container, Graphics, Text } from 'pixi.js';
 import { gameState } from "./GameState.js";
 
 export class Phone extends Container {
-    constructor(app, debugConsole, timeSystem) { // Добавили timeSystem
+    constructor(app, debugConsole, timeSystem) {
         super();
         this.app = app;
         this.debugConsole = debugConsole;
-        this.timeSystem = timeSystem; // Сохраняем ссылку
+        this.timeSystem = timeSystem;
 
         this.isOpen = false;
         this.messages = [];
@@ -32,7 +32,7 @@ export class Phone extends Container {
         this.listContainer.addChild(this.screenBg);
 
         this.header = new Text({
-            text: "MESSAGES",
+            text: "INCOMING PROTOCOLS", // Заменили MESSAGES
             style: { fill: '#00aaff', fontSize: 14, fontWeight: '900', letterSpacing: 1 }
         });
         this.header.x = this.phoneWidth / 2;
@@ -65,7 +65,7 @@ export class Phone extends Container {
             .fill(0x111111);
         this.detailContainer.addChild(detBg);
 
-        this.backBtn = new Text({ text: "< Back", style: { fill: '#00aaff', fontSize: 12, fontWeight: 'bold' } });
+        this.backBtn = new Text({ text: "<< RETURN", style: { fill: '#00aaff', fontSize: 12, fontWeight: 'bold' } }); // Заменили Back
         this.backBtn.x = 15; this.backBtn.y = 18;
         this.backBtn.eventMode = 'static';
         this.backBtn.cursor = 'pointer';
@@ -133,18 +133,15 @@ export class Phone extends Container {
 
     initTabs() {
         const tabY = this.phoneHeight - 65;
-        const tabBarHeight = 45; // Высота области табов
+        const tabBarHeight = 45;
 
-        // 1. Создаем непрозрачный фон для панели табов
-        // Он должен быть чуть выше самих кнопок, чтобы полностью закрыть щель снизу
         this.tabBarBg = new Graphics()
             .rect(8, tabY-20, this.phoneWidth - 16, tabBarHeight)
-            .fill(0x1a1a1a) // Тот же цвет, что и у корпуса телефона
-            .stroke({ color: 0x333333, width: 2, alignment: 0 }); // Верхняя граница-разделитель
+            .fill(0x1a1a1a)
+            .stroke({ color: 0x333333, width: 2, alignment: 0 });
 
         this.addChild(this.tabBarBg);
 
-        // 2. Иконки табов (твой существующий код)
         this.msgTab = new Text({ text: "💬", style: { fontSize: 20 } });
         this.msgTab.x = 60;
         this.msgTab.y = tabY;
@@ -152,7 +149,7 @@ export class Phone extends Container {
         this.msgTab.cursor = 'pointer';
         this.msgTab.on('pointerdown', () => this.switchTab('messages'));
 
-        this.weatherTab = new Text({ text: "☁️", style: { fontSize: 20 } });
+        this.weatherTab = new Text({ text: "🎰", style: { fontSize: 20 } }); // Заменили иконку облака на казино
         this.weatherTab.x = 140;
         this.weatherTab.y = tabY;
         this.weatherTab.eventMode = 'static';
@@ -160,14 +157,10 @@ export class Phone extends Container {
         this.weatherTab.on('pointerdown', () => this.switchTab('weather'));
 
         this.addChild(this.msgTab, this.weatherTab);
-
-        // Важно: кнопка HOME должна быть поверх фона табов
-        // Если ты вызываешь initTabs до создания homeBtn, то всё ок.
-        // Если после — добавь в конец: this.addChild(this.homeBtn);
     }
 
     switchTab(tab) {
-        this.currentOpenedMessage = null; // Сбрасываем просмотр сообщения при смене вкладки
+        this.currentOpenedMessage = null;
         if (tab === 'messages') {
             this.listContainer.visible = true;
             this.weatherContainer.visible = false;
@@ -185,16 +178,16 @@ export class Phone extends Container {
         if (!this.timeSystem) return;
         const forecast = this.timeSystem.getWeatherForecast();
 
-        this.todayTxt.text = `Today:\n${forecast.todayTemp}°C ${forecast.todayIcon}`;
-        this.tomorrowTxt.text = `Tomorrow:\n${forecast.tomorrowTemp}°C ${forecast.tomorrowIcon}`;
-        this.tomorrowTxt.style.fill = forecast.tomorrowIsRainy ? '#44aaff' : '#ffcc00';
+        this.todayTxt.text = `Current Cycle:\n${forecast.todayTemp}°C ${forecast.todayIcon}`;
+        this.tomorrowTxt.text = `Next Spin:\n${forecast.tomorrowTemp}°C ${forecast.tomorrowIcon}`;
+        this.tomorrowTxt.style.fill = forecast.tomorrowIsRainy ? '#44aaff' : '#ffd700'; // Золотой цвет для солнечной погоды (Jackpot)
     }
 
     addIncomingMessage(sender, text) {
         const msg = { id: Date.now(), sender, text, isRead: false };
         this.messages.unshift(msg);
         if (this.isOpen && this.listContainer.visible) this.renderMessages();
-        if (!this.isOpen && this.debugConsole) this.debugConsole.addMessage(`Новое СМС!`, "#00aaff");
+        if (!this.isOpen && this.debugConsole) this.debugConsole.addMessage(`ТЕРМИНАЛ: Новое СМС!`, "#00aaff"); // Тематический текст
     }
 
     renderMessages() {
@@ -249,13 +242,12 @@ export class Phone extends Container {
         this.isOpen = !this.isOpen;
         this.visible = this.isOpen;
         if (this.isOpen) {
-            // При открытии всегда показываем сообщения и обновляем данные
             this.switchTab('messages');
         }
     }
 
     resize() {
-        this.x = window.innerWidth - 270; // Чуть подвинул, чтобы влез
+        this.x = window.innerWidth - 270;
         this.y = 100;
     }
 }

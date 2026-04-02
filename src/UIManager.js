@@ -9,13 +9,6 @@ export class UIManager {
         dropShadow: { alpha: 0.5, blur: 4, distance: 2 }
     });
 
-    /**
-     * @param {number} amount - сумма
-     * @param {number} x - поз X
-     * @param {number} y - поз Y
-     * @param {Container} parent - куда добавить
-     * @param {Ticker} ticker - тикер приложения
-     */
     static spawnPopUp(amount, x, y, parent, ticker) {
         const popUp = new Text({
             text: `+${amount} 🪙`,

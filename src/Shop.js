@@ -13,45 +13,41 @@ export class Shop extends Container {
         this.x = window.innerWidth - 80;
         this.y = 20;
 
-        // Иконка корзины
+        // Иконка корзины (терминала покупок)
         this.icon = new Graphics()
             .roundRect(0, 0, 60, 60, 10)
             .fill(0xffcc00)
             .stroke({ color: 0xffffff, width: 2 });
 
-        const label = new Text({ text: "🛒", style: { fontSize: 32 } });
+        const label = new Text({ text: "💰", style: { fontSize: 32 } }); // Сменил на мешок с деньгами/чип
         label.anchor.set(0.5);
         label.x = 30; label.y = 30;
         this.addChild(this.icon, label);
 
         this.shopWindow = new Container();
         this.shopWindow.visible = false;
-        this.shopWindow.eventMode = 'none'; // БЛОКИРУЕМ клики сквозь закрытое окно
-        this.addChild(this.shopWindow); // Добавляем окно ПЕРЕД иконкой
+        this.shopWindow.eventMode = 'none';
+        this.addChild(this.shopWindow);
 
-        // --- НОВЫЕ ПАРАМЕТРЫ СКРОЛЛА ---
-        this.shopHeight = 400; // Высота видимой области
-        this.createShopWindow();
+        this.shopHeight = 400;
 
-        this.iconCont = new Container(); // Создаем отдельный контейнер для иконки
+        this.iconCont = new Container();
         this.iconCont.addChild(this.icon, label);
-        this.addChild(this.iconCont); // Иконка теперь ВСЕГДА сверху
+        this.addChild(this.iconCont);
 
         this.iconCont.eventMode = 'static';
         this.iconCont.cursor = 'pointer';
         this.iconCont.on('pointerdown', (e) => {
-            e.stopPropagation(); // Останавливаем всплытие события
+            e.stopPropagation();
             this.toggleShop();
         });
 
-        // ОБРАБОТКА СКРОЛЛА МЫШЬЮ
         this.eventMode = 'static';
         this.on('wheel', (e) => {
             if (!this.shopWindow.visible) return;
             const scrollSpeed = 20;
             this.catalogList.y -= e.deltaY > 0 ? scrollSpeed : -scrollSpeed;
 
-            // Ограничения скролла
             const minBtn = 0;
             const maxScroll = Math.min(0, this.shopHeight - this.catalogList.height - 20);
             if (this.catalogList.y > minBtn) this.catalogList.y = minBtn;
@@ -64,20 +60,17 @@ export class Shop extends Container {
     createShopWindow() {
         this.shopWindow.removeChildren();
 
-        // Фон окна
         const bg = new Graphics()
             .roundRect(-220, 70, 280, 450, 15)
             .fill({ color: 0x000000, alpha: 0.9 })
-            .stroke({ color: 0xffcc00, width: 2 });
+            .stroke({ color: 0x00aaff, width: 2 }); // Сменил на синий неон
         this.shopWindow.addChild(bg);
 
-        // Контейнер-маска (как в телефоне)
         const mask = new Graphics()
             .roundRect(-215, 80, 270, this.shopHeight, 10)
             .fill(0xffffff);
         this.shopWindow.addChild(mask);
 
-        // Контейнер для списка товаров
         this.scrollArea = new Container();
         this.scrollArea.x = -210;
         this.scrollArea.y = 85;
@@ -98,29 +91,28 @@ export class Shop extends Container {
             { name: 'Bio-Slot Preparator', toolType: 'hoe', price: 50, count: 5, color: 0xaaaaaa, type: 'tool' },
             { name: 'Liquid Luck Dispenser', toolType: 'can', price: 40, count: 5, color: 0x00aaff, type: 'tool' },
             { name: 'Deep-Fluid Server', toolType: 'well', price: 500, count: 1, color: 0x555555, type: 'building' },
-            { name: 'Slot-Lime', type: 'green', bonus: 10, price: 20, count: 5, color: 0x32cd32 },
-            { name: 'Roulette-Cherry', type: 'red', bonus: 25, price: 50, count: 5, color: 0xff4500 },
-            { name: 'RTP Booster', type: 'fertilizer', price: 30, count: 5, color: 0xeeeeee }
+            { name: 'Slot-Lime [LV]', type: 'green', bonus: 10, price: 20, count: 5, color: 0x32cd32 },
+            { name: 'Roulette-Cherry [HS]', type: 'red', bonus: 25, price: 50, count: 5, color: 0xff4500 },
+            { name: 'RTP Booster (+50%)', type: 'fertilizer', price: 30, count: 5, color: 0xeeeeee }
         ];
 
-        // Добавляем Синие Семена, если разблокированы
         if (gameState.quests.blueSeeds && gameState.quests.blueSeeds.unlocked) {
-            catalog.push({ name: 'Indigo Pulse', type: 'blue', bonus: 50, price: 150, count: 5, color: 0x00aaff });
+            catalog.push({ name: 'JACKPOT NEON', type: 'blue', bonus: 50, price: 150, count: 5, color: 0x00aaff });
         }
 
         catalog.forEach((item, i) => {
             const row = new Container();
             row.y = i * 70;
 
-            const btn = new Graphics().roundRect(0, 0, 240, 60, 5).fill(0x333333);
+            const btn = new Graphics().roundRect(0, 0, 240, 60, 5).fill(0x1a1a1a).stroke({color: 0x333333, width: 1});
             btn.eventMode = 'static';
             btn.cursor = 'pointer';
 
             const txt = new Text({
-                text: `${item.name} - ${item.price}💰`,
-                style: { fill: 0xffffff, fontSize: 14 }
+                text: `${item.name}\nCOST: ${item.price} CR`, // Изменил 💰 на CR (Credits)
+                style: { fill: '#00aaff', fontSize: 13, fontWeight: 'bold' }
             });
-            txt.x = 10; txt.y = 20;
+            txt.x = 10; txt.y = 12;
 
             btn.on('pointerdown', () => this.buyItem(item));
             row.addChild(btn, txt);
@@ -128,7 +120,6 @@ export class Shop extends Container {
         });
     }
 
-    // Метод buyItem остается БЕЗ ИЗМЕНЕНИЙ (твой функционал колодца и инвентаря сохранен)
     buyItem(conf) {
         if (gameState.gold < conf.price) {
             this.debugConsole?.addMessage("[ОШИБКА]: Баланс ниже минимальной ставки!", "#ff4444");
@@ -136,21 +127,21 @@ export class Shop extends Container {
         }
         if (conf.toolType === 'well') {
             if (gameState.hasWell) {
-                this.debugConsole?.addMessage("Колодец уже построен!", "#ffaa00");
+                this.debugConsole?.addMessage("[ОТКАЗ]: Сервер уже активен!", "#ffaa00");
                 return;
             }
             const grassTiles = this.allTiles.filter(t => t.type === 0);
             if (grassTiles.length > 0) {
                 gameState.gold -= conf.price;
-                this.goldText.text = `Кредиты: ${gameState.gold}`;
+                this.goldText.text = `CREDITS: ${gameState.gold}`;
                 gameState.hasWell = true;
                 const randomTile = grassTiles[Math.floor(Math.random() * grassTiles.length)];
                 randomTile.type = 3;
                 randomTile.drawBackground();
-                this.debugConsole?.addMessage("Колодец построен!", "#00ffff", "🏗️");
+                this.debugConsole?.addMessage("Deep-Fluid Server онлайн!", "#00ffff", "📡");
                 this.updateInvUI();
             } else {
-                this.debugConsole?.addMessage("Нет места для колодца!", "#ff4444");
+                this.debugConsole?.addMessage("[ОШИБКА]: Нет свободного сектора!", "#ff4444");
             }
             return;
         }
@@ -160,14 +151,14 @@ export class Shop extends Container {
 
         if (slot !== -1) {
             gameState.gold -= conf.price;
-            this.goldText.text = `Кредиты: ${gameState.gold}`;
+            this.goldText.text = `CREDITS: ${gameState.gold}`;
             if (gameState.inventory[slot]) {
                 gameState.inventory[slot].count += conf.count;
             } else {
                 gameState.inventory[slot] = { ...conf };
             }
             this.updateInvUI();
-            this.debugConsole?.addMessage(`Куплено: ${conf.name}`, "#4caf50");
+            this.debugConsole?.addMessage(`ПОДТВЕРЖДЕНО: Получен ${conf.name}`, "#4caf50");
         } else {
             this.debugConsole?.addMessage("[ОТКАЗ]: Слот-хранилище перегружено.", "#ff4444");
         }
@@ -175,7 +166,6 @@ export class Shop extends Container {
 
     toggleShop() {
         this.shopWindow.visible = !this.shopWindow.visible;
-        // Если окно открыто — оно должно принимать клики (для покупки), если закрыто — нет
         this.shopWindow.eventMode = this.shopWindow.visible ? 'static' : 'none';
 
         if (this.shopWindow.visible) {

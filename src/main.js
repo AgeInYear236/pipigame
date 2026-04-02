@@ -6,74 +6,78 @@ import { DebugConsole } from './DebugConsole';
 import { setDebugConsole } from './Casino';
 import { Shop } from './Shop';
 import { TimeSystem } from './TimeSystem';
-import {SaveSystem} from "./SaveSystem.js";
-import {Phone} from "./Phone.js";
-import {Environment} from "./Environment.js";
-import {MainMenu} from "./MainMenu.js";
-import {HintSystem} from "./HintSystem.js";
+import { SaveSystem } from "./SaveSystem.js";
+import { Phone } from "./Phone.js";
+import { Environment } from "./Environment.js";
+import { MainMenu } from "./MainMenu.js";
+import { HintSystem } from "./HintSystem.js";
 
 const app = new Application();
 
 async function init() {
-    // 1. ИНИЦИАЛИЗАЦИЯ
+    // 1. ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ
     await app.init({
-        background: '#2d5a27',
+        background: '#0a1a0a',
         resizeTo: window,
         antialias: true
     });
     document.body.appendChild(app.canvas);
 
-    // СЛОИ (Z-index)
-    const world = new Container();       // Земля и объекты
+    // СЛОИ (Z-index Management)
+    const world = new Container();       // Слой био-секторов
     const groundLayer = new Container();
     const entityLayer = new Container();
 
-    // СЛОЙ ТЕМНОТЫ (Overlay)
+    // СЛОЙ ЗАТЕМНЕНИЯ (Цикл Перезагрузки)
     const nightOverlay = new Graphics()
         .rect(0, 0, window.innerWidth, window.innerHeight)
-        .fill(0x1a1a40);
+        .fill(0x050515);
     nightOverlay.alpha = 0;
-    nightOverlay.eventMode = 'none'; // Пропускает клики сквозь себя
+    nightOverlay.eventMode = 'none'; // Пропускает импульсы сквозь себя
 
-    const ui = new Container();          // Интерфейс (всегда сверху и яркий)
+    const ui = new Container();          // Интерфейс (High Priority Layer)
 
     world.addChild(groundLayer, entityLayer);
 
-    // ПОРЯДОК ДОБАВЛЕНИЯ ВАЖЕН:
-    app.stage.addChild(world);        // 1. Мир
-    app.stage.addChild(nightOverlay); // 2. Темнота поверх мира
-    app.stage.addChild(ui);           // 3. UI поверх темноты
+    // ПОРЯДОК РЕНДЕРА:
+    app.stage.addChild(world);        // 1. Секторы и объекты
+    app.stage.addChild(nightOverlay); // 2. Визуальный фильтр цикла
+    app.stage.addChild(ui);           // 3. Терминал управления
 
-    // 2. ИНТЕРФЕЙС (UI)
+    // 2. ВИЗУАЛЬНЫЕ ПРОТОКОЛЫ (UI)
     const style = new TextStyle({
-        fill: '#ffffff',
+        fill: '#00ff00',
         fontSize: 24,
+        fontFamily: 'monospace',
         fontWeight: 'bold',
         dropShadow: { alpha: 0.5, blur: 4, distance: 2 }
     });
 
     const goldText = new Text({
-        text: `Кредиты: ${gameState.gold}`,
-        style: { fill: '#0560F5', fontSize: 24, fontWeight: 'bold' }
+        text: `CREDITS: ${gameState.gold}`,
+        style: { fill: '#00aaff', fontSize: 24, fontWeight: 'bold', fontFamily: 'monospace' }
     });
     goldText.x = 20; goldText.y = 20;
 
-    // ЧАСЫ (в слое UI)
+    // СИСТЕМНОЕ ВРЕМЯ (в слое UI)
     const timeSystem = new TimeSystem();
     const timeText = new Text({
-        text: "🕒 12:00",
+        text: "🕒 SYNCING...",
         style: { ...style, fontSize: 28 }
     });
     timeText.x = 20; timeText.y = 60;
 
-    const slotText = new Text({ text: '', style: { ...style, fontSize: 42, fill: '#ffcc00' } });
+    const slotText = new Text({
+        text: '',
+        style: { ...style, fontSize: 42, fill: '#ffd700' }
+    });
     slotText.anchor.set(0.5);
     slotText.x = window.innerWidth / 2;
     slotText.y = 80;
 
     const itemLabel = new Text({
         text: '',
-        style: { fill: '#ffffff', fontSize: 20, fontWeight: 'italic' }
+        style: { fill: '#ffffff', fontSize: 20, fontWeight: 'normal', fontFamily: 'monospace' }
     });
     itemLabel.anchor.set(0.5);
     itemLabel.x = window.innerWidth / 2;
@@ -91,7 +95,7 @@ async function init() {
     app.stage.addChild(hintSystem);
 
     const rainContainer = new Container();
-    app.stage.addChild(rainContainer); // Дождь будет под UI, но над миром
+    app.stage.addChild(rainContainer); // Контейнер для протокола Liquid Luck
 
     const rainDrops = [];
     const RAIN_COUNT = 100;
@@ -108,12 +112,15 @@ async function init() {
         rainDrops.push(drop);
     }
 
-    // 3. ИГРОК
-    const player = new Graphics().circle(0, 0, 18).fill(0xffd700).stroke({ color: 0x000, width: 2 });
+    // 3. ОПЕРАТОР (Игрок)
+    const player = new Graphics()
+        .circle(0, 0, 18)
+        .fill(0x00ff00)
+        .stroke({ color: 0xffffff, width: 2 });
     player.x = 200; player.y = 200;
     entityLayer.addChild(player);
 
-    // 4. КАРТА (Упрощенный вызов для краткости)
+    // 4. КАРТА СЕКТОРОВ (ПОЛНАЯ МАТРИЦА)
     const TILE_SIZE = 50;
     const PLAYER_SPEED = 4;
     const mapLayout = [
@@ -139,7 +146,7 @@ async function init() {
     const mapWidthTiles = mapLayout[0].length;
     const mapHeightTiles = mapLayout.length;
 
-    // 5. ИНВЕНТАРЬ
+    // 5. ИНВЕНТАРЬ (Data Storage Slots)
     const invContainer = new Container();
     const slotContainers = [];
     for (let i = 0; i < 10; i++) {
@@ -160,120 +167,113 @@ async function init() {
         slotContainers.forEach((slot, i) => {
             slot.bg.clear()
                 .roundRect(0, 0, 50, 50, 8)
-                .fill(i === gameState.selectedSlot ? 0x555555 : 0x333333)
-                .stroke({ color: i === gameState.selectedSlot ? 0xffd700 : 0xffffff, width: i === gameState.selectedSlot ? 4 : 2 });
+                .fill(i === gameState.selectedSlot ? 0x00aaff : 0x111111)
+                .stroke({
+                    color: i === gameState.selectedSlot ? 0x00ff00 : 0x444444,
+                    width: i === gameState.selectedSlot ? 4 : 2
+                });
 
             const item = gameState.inventory[i];
             slot.itemContainer.removeChildren();
             if (item) {
                 const icon = new Graphics().circle(25, 25, 12).fill(item.color);
                 slot.itemContainer.addChild(icon);
-                const countText = new Text({ text: `x${item.count}`, style: { fill: 0xffffff, fontSize: 12 } });
+                const countText = new Text({
+                    text: `x${item.count}`,
+                    style: { fill: 0xffffff, fontSize: 12, fontFamily: 'monospace' }
+                });
                 countText.x = 35; countText.y = 35;
                 slot.itemContainer.addChild(countText);
             }
         });
         const currentItem = gameState.inventory[gameState.selectedSlot];
-        UIManager.updateItemLabel(itemLabel, currentItem ? currentItem.name : "Пусто");
+        UIManager.updateItemLabel(itemLabel, currentItem ? `[ ${currentItem.name.toUpperCase()} ]` : "[ EMPTY_SLOT ]");
     };
 
     updateInvUI();
 
-
     const phone = new Phone(app, debugConsole, timeSystem);
     ui.addChild(phone);
 
+    // COMMAND CENTER (Бывшие Руины)
     const housePrice = 2500;
     const houseContainer = new Container();
-
-// Позиционируем строго по сетке (например, отступаем 2 тайла сверху и слева)
     const gridX = 2;
     const gridY = 12;
     houseContainer.x = gridX * 50;
     houseContainer.y = gridY * 50;
 
-// Графика руин (Серый блок 3x3 тайла)
     const houseBg = new Graphics();
-
-// Функция отрисовки состояния дома
     const drawHouseState = (isBuilt) => {
         houseBg.clear();
         if (!isBuilt) {
-            // РУИНЫ: Рисуем "кучу камней" в пределах 150x150
-            houseBg.rect(0, 0, 150, 150).fill({ color: 0x777777, alpha: 1 });
-            // Добавим текстуру камней (просто прямоугольники поменьше)
-            for(let i=0; i<5; i++) {
-                houseBg.rect(Math.random()*100, Math.random()*100, 40, 30).fill(0x555555);
+            // DECOMMISSIONED UNIT: Серый блок фундамента
+            houseBg.rect(0, 0, 150, 150).fill({ color: 0x222222, alpha: 1 });
+            for(let i=0; i<6; i++) {
+                houseBg.rect(Math.random()*100, Math.random()*100, 40, 5).fill(0x00ff00);
             }
-            houseBg.stroke({ color: 0x333333, width: 4 });
+            houseBg.stroke({ color: 0x444444, width: 4 });
         } else {
-            // ПОСТРОЕННЫЙ ДОМ: Яркий блок 3x3
-            houseBg.rect(0, 0, 150, 150).fill(0x8d6e63); // Стены
-            houseBg.poly([0, 50, 75, 0, 150, 50]).fill(0xd32f2f); // Простая крыша сверху
-            houseBg.rect(60, 100, 30, 50).fill(0x3e2723); // Дверь
-            houseBg.stroke({ color: 0x221100, width: 5 });
+            // COMMAND CENTER: Высокотехнологичный узел
+            houseBg.rect(0, 0, 150, 150).fill(0x1a1a1a);
+            houseBg.rect(10, 10, 130, 80).fill(0x002244); // Основной экран мониторинга
+            houseBg.rect(60, 100, 30, 50).fill(0x333333); // Гермозатвор
+            houseBg.stroke({ color: 0x00aaff, width: 5 });
         }
     };
 
     drawHouseState(gameState.houseBuilt);
 
     const houseLabel = new Text({
-        text: "СТАРЫЕ РУИНЫ",
-        style: { fill: '#ffffff', fontSize: 16, fontWeight: 'bold', stroke: '#000000', strokeThickness: 4 }
+        text: "DECOMMISSIONED UNIT",
+        style: { fill: '#fafafa', fontSize: 12, fontWeight: 'bold', fontFamily: 'monospace' }
     });
     houseLabel.anchor.set(0.5);
-    houseLabel.x = 75; // Центр блока 150/2
+    houseLabel.x = 75;
     houseLabel.y = 75;
 
     houseContainer.addChild(houseBg, houseLabel);
     houseContainer.eventMode = 'static';
     houseContainer.cursor = 'pointer';
 
-// Логика клика
     houseContainer.on('pointerdown', () => {
         if (gameState.houseBuilt) {
-            debugConsole.addMessage("Твой уютный уголок.", "#00ff00");
+            debugConsole.addMessage("COMMAND CENTER ONLINE. SYSTEM NOMINAL.", "#00ff00");
             return;
         }
 
         if (gameState.gold >= housePrice) {
             gameState.gold -= housePrice;
             gameState.houseBuilt = true;
-            goldText.text = `Кредиты: ${gameState.gold}`;
+            goldText.text = `CREDITS: ${gameState.gold}`;
 
             drawHouseState(true);
-            houseLabel.text = "МОЙ ДОМ";
+            houseLabel.text = "COMMAND CENTER";
 
-            phone.addIncomingMessage("Старый Фермер", "Ничего себе хоромы! Поздравляю с новосельем, сосед.");
-            debugConsole.addMessage("Дом построен!", "#ffd700");
+            phone.addIncomingMessage("PIT BOSS", "Ничего себе терминал! Поздравляю с расширением инфраструктуры.");
+            debugConsole.addMessage("СИСТЕМА: Центр управления развернут!", "#00ff00");
         } else {
-            debugConsole.addMessage(`Не хватает золота! Нужно ${housePrice}.`, "#ff4444");
+            debugConsole.addMessage(`ОШИБКА: Недостаточно кредитов! Нужно ${housePrice} CR.`, "#ff4444");
         }
     });
 
     world.addChild(houseContainer);
 
-
-// 6. СОЗДАНИЕ ТАЙЛОВ
+    // 6. ФОРМИРОВАНИЕ МАТРИЦЫ ТАЙЛОВ
     const tiles = [];
     mapLayout.forEach((row, y) => {
         row.forEach((type, x) => {
-            // Проверяем, находится ли текущий тайл под будущим домом
             const isUnderHouse = (
                 x >= gridX && x < gridX + 3 &&
                 y >= gridY && y < gridY + 3
             );
 
-            // Если под домом — принудительно ставим тип, который нельзя вскопать (например, 2 или 10)
-            // Либо передаем доп. параметр в конструктор Tile
             const finalType = isUnderHouse ? 2 : type;
-
             const tile = new Tile(finalType, x, y, TILE_SIZE, player, goldText, slotText, mapLayout, entityLayer, updateInvUI, debugConsole);
 
-            // Добавим свойство объекту тайла, чтобы он знал, что он "фундамент"
             if (isUnderHouse) {
                 tile.isStatic = true;
-                tile.eventMode = 'none'; // Отключаем клики по этим тайлам вообще
+                tile.eventMode = 'none';
             }
 
             groundLayer.addChild(tile);
@@ -281,21 +281,20 @@ async function init() {
         });
     });
 
-
     const shop = new Shop(app, updateInvUI, debugConsole, goldText, tiles);
     ui.addChild(shop);
 
-    // Иконка телефона (Кнопка)
+    // КНОПКА ТЕРМИНАЛА (📟)
     const phoneBtn = new Graphics()
         .roundRect(0, 0, 50, 50, 10)
-        .fill(0x333333)
-        .stroke({ color: 0x00aaff, width: 2 });
+        .fill(0x111111)
+        .stroke({ color: 0x00ff00, width: 2 });
     phoneBtn.x = window.innerWidth - 140;
     phoneBtn.y = 20;
     phoneBtn.eventMode = 'static';
     phoneBtn.cursor = 'pointer';
 
-    const phoneIcon = new Text({ text: "📱", style: { fontSize: 30 } });
+    const phoneIcon = new Text({ text: "📟", style: { fontSize: 30 } });
     phoneIcon.anchor.set(0.5);
     phoneIcon.x = 25; phoneIcon.y = 25;
     phoneBtn.addChild(phoneIcon);
@@ -305,67 +304,59 @@ async function init() {
 
     const environment = new Environment(app, timeSystem);
     app.stage.addChild(environment);
-    environment.zIndex = 1000; // Поднимаем в самый верх
+    environment.zIndex = 1000;
 
-// ТЕСТОВЫЙ ВЫЗОВ (можно удалить потом)
+    // ВХОДЯЩИЕ СООБЩЕНИЯ (Lore-Friendly)
     setTimeout(() => {
-        phone.addIncomingMessage("Неизвестный", "Привет! Это твой новый телефон. Здесь будет вся необходимая информация!");
-    }, 3000);
+        phone.addIncomingMessage("CORE_SYS", "Авторизация прошла успешно. Терминал готов к работе.");
+    }, 2000);
 
-    // 1. Приветственное сообщение через 5 секунд после старта
+    // 1. Приветственный протокол
     setTimeout(() => {
         phone.addIncomingMessage(
-            "Старый Фермер",
-            "Привет, новичок! Вижу, ты взялся за дело. Чтобы ферма процветала, нужно подготовить землю. Вспахай 67 клеток (сделай из них грядки), и я подкину тебе 50 золотых на развитие!"
+            "PIT BOSS",
+            "Привет, оператор! Вижу, ты в сети. Чтобы начать игру, нужно подготовить 67 секторов (активируй их Slot-Preparator-ом). Сделаешь это — зачислю 50 CR на баланс!"
         );
         gameState.quests.plowCells.active = true;
-    }, 5000);
+    }, 12000);
 
-// 2. Функция проверки квеста (создадим её внутри init или рядом)
+    // 2. ФУНКЦИЯ МОНИТОРИНГА КВЕСТОВ
     const checkQuests = () => {
         const q = gameState.quests.plowCells;
 
-        // Если квест активен и еще не выполнен
         if (q.active && !q.completed) {
-            // Считаем сколько сейчас грядок (тип 1) на карте
             const plowedCount = tiles.filter(t => t.type === 1).length;
             q.current = plowedCount;
 
             if (q.current >= q.target) {
                 q.completed = true;
                 q.active = false;
-
-                // Выдаем награду
                 gameState.gold += q.reward;
-                goldText.text = `Кредиты: ${gameState.gold}`; // Обновляем UI золота
+                goldText.text = `CREDITS: ${gameState.gold}`;
 
-                // Пишем в телефон и консоль
-                phone.addIncomingMessage("Старый Фермер", "Отличная работа! Земля готова к посадкам. Вот твоя награда — 50 золотых. Трать с умом!");
-                debugConsole.addMessage("Квест выполнен: Вспахано 67 клеток! +50 золота", "#00ff00", "🏆");
+                phone.addIncomingMessage("PIT BOSS", "Секторы активны. Почва готова к загрузке ассетов. Вот твои 50 кредитов.");
+                debugConsole.addMessage("КВЕСТ: Секторы подготовлены! +50 CR", "#00ff00", "🏆");
 
-                // ЧЕРЕЗ 10 СЕКУНД ПОСЛЕ ПЕРВОГО КВЕСТА ДАЕМ ВТОРОЙ
                 setTimeout(() => {
                     startWaterQuest();
                 }, 10000);
             }
         }
 
-        // --- ВТОРОЙ КВЕСТ (Полив) ---
+        // --- КВЕСТ 2: ОПТИМИЗАЦИЯ RTP (Полив) ---
         const q2 = gameState.quests.waterCells;
         if (q2.active && !q2.completed) {
-            // Считаем сколько грядок сейчас полито (isWatered === true)
             const wateredCount = tiles.filter(t => t.type === 1 && t.isWatered).length;
             q2.current = wateredCount;
 
             if (q2.current >= q2.target) {
                 q2.completed = true;
                 q2.active = false;
-
                 gameState.gold += q2.reward;
-                goldText.text = `Кредиты: ${gameState.gold}`;
+                goldText.text = `CREDITS: ${gameState.gold}`;
 
-                phone.addIncomingMessage("Старый Фермер", "Вижу, земля намокла! Растения любят воду. Держи еще 50 золотых. Теперь ты готов к настоящим посадкам!");
-                debugConsole.addMessage("Квест выполнен: Полито 10 грядок! +50 золота", "#00ff00", "🏆");
+                phone.addIncomingMessage("PIT BOSS", "Вижу, влажность в норме! Это повышает шансы на удачный спин. Держи еще 50 CR.");
+                debugConsole.addMessage("КВЕСТ: Гидратация завершена! +50 CR", "#00ff00", "🏆");
                 setTimeout(() => {
                     startq3();
                 }, 5000);
@@ -373,29 +364,23 @@ async function init() {
         }
 
         const q3 = gameState.quests.blueSeeds;
-
         if (q3.active && !q3.completed) {
-
-            // Отправляем вводное сообщение от Ассоциации
             phone.addIncomingMessage(
-                "Ассоциация",
-                "Впечатляющие результаты! 💧 Мы видим в тебе потенциал. \n\nНовое задание: заработай 500 монет чистой прибыли, и мы откроем тебе доступ к секретной разработке — семенам Indigo Pulse. \n\nУдачи, фермер!"
+                "CORE_ASSOCIATION",
+                "Впечатляющие результаты! 💹 Мы видим потенциал. Заработай 500 кредитов чистой прибыли, и мы откроем доступ к Indigo Pulse."
             );
-
         }
 
-        // 2. ПРОВЕРКА: Условие победы (500 монет)
+        // 3. УСЛОВИЕ РАЗБЛОКИРОВКИ INDIGO PULSE
         if (gameState.quests.blueSeeds && gameState.quests.blueSeeds.active && !gameState.quests.blueSeeds.unlocked) {
             if (gameState.gold >= gameState.quests.blueSeeds.threshold) {
-
                 gameState.quests.blueSeeds.unlocked = true;
-                gameState.quests.blueSeeds.active = false; // Квест выполнен
+                gameState.quests.blueSeeds.active = false;
 
-                // Выдаем 2 синих семени в первый свободный слот (null)
                 const slot = gameState.inventory.findIndex(s => s === null);
                 if (slot !== -1) {
                     gameState.inventory[slot] = {
-                        name: 'Indigo Pulse',
+                        name: 'INDIGO PULSE [LEGACY]',
                         type: 'blue',
                         bonus: 50,
                         color: 0x00aaff,
@@ -403,54 +388,46 @@ async function init() {
                     };
                 }
 
-                // Финальное СМС с поздравлением
                 phone.addIncomingMessage(
-                    "Ассоциация",
-                    "Грандиозно! 🎰 500 монет в кармане. \n\nКак и обещали, Indigo Pulse теперь в твоем распоряжении. Они уже в инвентаре, а дополнительные партии ищи в магазине. \n\nБереги их, они светятся в темноте!"
+                    "CORE_ASSOCIATION",
+                    "Грандиозно! 🎰 Лимит в 500 CR пройден. Indigo Pulse теперь в твоем распоряжении. Они уже в слотах терминала."
                 );
 
-                // Обновляем UI и Магазин
                 updateInvUI();
-                if (shop) shop.createShopWindow(); // Чтобы семена появились в списке
-
-                if (debugConsole) debugConsole.addMessage("Квест выполнен: Доступ к Indigo Pulse!", "#ffd700");
+                if (shop) shop.createShopWindow();
+                if (debugConsole) debugConsole.addMessage("СИСТЕМА: Доступ к Indigo Pulse открыт!", "#ffd700");
             }
         }
     };
 
-    // Функция запуска второго квеста
     const startWaterQuest = () => {
         phone.addIncomingMessage(
-            "Старый Фермер",
-            "Слушай, земля-то сухая! Возьми лейку (или дождись дождя) и полей хотя бы 10 грядок. Без воды ничего не вырастет. Сделаешь — отсыпаю еще 50 золотых!"
+            "PIT BOSS",
+            "Слушай, ассеты перегреваются! Используй LL-Dispenser или жди протокола 'Liquid Luck', чтобы охладить 25 секторов. Сделаешь — получишь кэшбек."
         );
         gameState.quests.waterCells.active = true;
     };
-    const startq3 = () => {
 
+    const startq3 = () => {
         gameState.quests.blueSeeds.active = true;
     };
 
     function payTaxes() {
         const taxAmount = 50;
         gameState.gold -= taxAmount;
+        goldText.text = `CREDITS: ${gameState.gold}`;
 
-        // Обновляем UI золота
-        goldText.text = `Кредиты: ${gameState.gold}`;
-
-        // Отправляем сообщение в телефон
         phone.addIncomingMessage(
-            "Налоговая служба",
-            `Уважаемый фермер! С вашего счета списано ${taxAmount} золотых в качестве ежедневного земельного налога. Благодарим за вклад в развитие округа!`
+            "HOUSE_EDGE",
+            `Внимание! Списана комиссия заведения в размере ${taxAmount} CR за аренду био-терминалов.`
         );
 
         if (debugConsole) {
-            debugConsole.addMessage(`Комиссия Заведения списана. Удачи в следующем раунде.: -${taxAmount} кредитов`, "#ff4444", "💸");
+            debugConsole.addMessage(`КОМИССИЯ: Списание средств. Удачи в следующем раунде: -${taxAmount} CR`, "#ff4444", "💸");
         }
 
-        // Проверка на банкротство (если ушел в минус)
         if (gameState.gold < 0) {
-            phone.addIncomingMessage("Банк", "Внимание! Ваш баланс отрицательный. Срочно продайте урожай, иначе ферма будет арестована!");
+            phone.addIncomingMessage("BANK_UNIT", "Внимание! Отрицательный баланс. Срочно реализуй ассеты, иначе доступ будет заблокирован!");
         }
     }
 
@@ -458,14 +435,13 @@ async function init() {
 
     const startLevel = () => {
         gameStarted = true;
-        // Можно здесь отправить первое приветственное сообщение
-        phone.addIncomingMessage("Дедушка", "Привет! Рад, что ты приехал. Начни с грядок, налоги сами себя не заплатят!");
+        // phone.addIncomingMessage("PIT BOSS", "Рад, что ты принял контракт. Начни с подготовки секторов, комиссия не ждет!");
     };
 
     const mainMenu = new MainMenu(app, startLevel);
     app.stage.addChild(mainMenu);
 
-    // 7. УПРАВЛЕНИЕ
+    // 7. КОНТРОЛЛЕР ВВОДА
     window.addEventListener('keydown', (e) => {
         gameState.keys[e.code] = true;
         if (e.code.startsWith('Digit')) {
@@ -476,20 +452,18 @@ async function init() {
 
         if (e.code === 'KeyI') {
             const currentItem = gameState.inventory[gameState.selectedSlot];
-
             if (currentItem) {
                 hintSystem.show(currentItem);
             } else {
-                if (debugConsole) debugConsole.addMessage("Руки пусты", "#ff4444");
+                if (debugConsole) debugConsole.addMessage("СЛОТ ПУСТ", "#ff4444");
             }
         }
     });
     window.addEventListener('keyup', (e) => gameState.keys[e.code] = false);
 
-    // 8. ИГРОВОЙ ЦИКЛ
+    // 8. ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ (TICKER)
     app.ticker.add((ticker) => {
         const dt = ticker.deltaTime;
-
 
         if (!gameStarted) {
             if (mainMenu && !mainMenu.destroyed) {
@@ -499,21 +473,20 @@ async function init() {
         }
 
         checkQuests();
-        const wasNewDay = timeSystem.hour === 0 && timeSystem.minute === 0 && timeSystem.timer === 0;
-
         environment.update(dt);
-        // Время и Ночь
-        timeSystem.update(dt * 10);
-        timeText.text = `🕒 ${timeSystem.getTimeString()}`;
 
+        // Время и Ночной Протокол
+        timeSystem.update(dt * 10, debugConsole);
+        timeText.text = `CYCLE ${timeSystem.day} | SYNC: ${timeSystem.getTimeString()}`;
+
+        // Списания (House Edge)
         if (timeSystem.hour === 0 && timeSystem.minute === 0 && Math.floor(timeSystem.timer) === 0) {
             if (timeSystem.day >= 3 && !gameState.taxPaidToday) {
                 payTaxes();
-                gameState.taxPaidToday = true; // Флаг, чтобы не списывать весь час 00:00
+                gameState.taxPaidToday = true;
             }
         }
 
-        // Сбрасываем флаг налогов в 01:00, чтобы быть готовыми к следующему дню
         if (timeSystem.hour === 1) {
             gameState.taxPaidToday = false;
         }
@@ -521,35 +494,27 @@ async function init() {
         const night = timeSystem.getNightIntensity();
         nightOverlay.alpha = night.alpha;
 
-        // Обновление времени
-        timeSystem.update(dt, debugConsole); // Передаем консоль для логов дней
-        timeText.text = `📅 День ${timeSystem.day} | 🕒 ${timeSystem.getTimeString()}`;
-
-        // Логика дождя
+        // Логика протокола "Liquid Luck" (Дождь)
         rainContainer.visible = timeSystem.isRaining;
         if (timeSystem.isRaining) {
             rainDrops.forEach(drop => {
                 drop.y += drop.speed * dt;
-                drop.x += (drop.speed * 0.2) * dt; // Небольшой наклон от ветра
+                drop.x += (drop.speed * 0.2) * dt;
 
-                // Если капля упала за экран — возвращаем наверх
                 if (drop.y > window.innerHeight) {
                     drop.y = -20;
                     drop.x = Math.random() * window.innerWidth;
                 }
             });
 
-            // Авто-полив: проходим по всем тайлам и поливаем их
             tiles.forEach(tile => {
-                if (tile.type === 1) { // Если это грядка
+                if (tile.type === 1) {
                     tile.isWatered = true;
-                    // Не забудь добавить метод updateVisuals в Tile.js,
-                    // если хочешь, чтобы грядка темнела мгновенно
                 }
             });
         }
 
-        // Движение игрока
+        // Навигация оператора
         let nextX = player.x;
         let nextY = player.y;
         if (gameState.keys['KeyW']) nextY -= PLAYER_SPEED * dt;
@@ -567,7 +532,7 @@ async function init() {
         if (!checkWall(nextX, player.y)) player.x = nextX;
         if (!checkWall(player.x, nextY)) player.y = nextY;
 
-        // Y-Sorting
+        // Y-Sorting (Сортировка глубины)
         entityLayer.children.sort((a, b) => {
             const aPos = (a === player) ? a.y : a.y + TILE_SIZE;
             const bPos = (b === player) ? b.y : b.y + TILE_SIZE;
@@ -576,22 +541,22 @@ async function init() {
 
         tiles.forEach(t => t.update(dt));
 
+        // Сюжетный триггер для Command Center
         if (timeSystem.day === 2 && !gameState.houseQuestSent) {
             gameState.houseQuestSent = true;
-
-            // Задержка, чтобы письмо не пришло ровно в 00:00
             setTimeout(() => {
                 phone.addIncomingMessage(
-                    "Старый Фермер",
-                    "Доброе утро! Слушай, я тут проходил мимо твоих руин... Сердце кровью обливается. Было бы неплохо построить там приличный домик. На материалы уйдет где-то 2500 золотых, но оно того стоит — фермер без дома как сапожник без сапог!"
+                    "PIT BOSS",
+                    "Доброе утро! Слушай, я видел те руины... Сердце кровью обливается. Давай восстановим Command Center. Материалы обойдутся в 2500 CR, но хакер без базы — это просто любитель!"
                 );
             }, 5000);
         }
     });
 
+    // ОБРАБОТЧИК ИЗМЕНЕНИЯ РАЗМЕРА ЭКРАНА
     window.addEventListener('resize', () => {
         app.renderer.resize(window.innerWidth, window.innerHeight);
-        nightOverlay.clear().rect(0, 0, window.innerWidth, window.innerHeight).fill(0x1a1a40);
+        nightOverlay.clear().rect(0, 0, window.innerWidth, window.innerHeight).fill(0x050515);
         invContainer.x = (window.innerWidth - (10 * 55)) / 2;
         invContainer.y = window.innerHeight - 70;
         slotText.x = window.innerWidth / 2;
@@ -601,33 +566,30 @@ async function init() {
         phone.resize();
     });
 
-
-
+    // СИСТЕМА ДАМПОВ (Сохранения)
     const saveSystem = new SaveSystem(gameState, timeSystem, tiles);
 
-// Нажми 'S' (английскую) чтобы сохранить
     window.addEventListener('keydown', (e) => {
+        // [ - Snapshot
         if (e.code === 'BracketLeft') {
             saveSystem.save();
-            debugConsole.addMessage("ИГРА СОХРАНЕНА!", "#ffff00");
+            debugConsole.addMessage("СИСТЕМА: Snapshot сохранен!", "#ffff00");
         }
 
-        // Нажми 'L' чтобы загрузить
+        // ] - Restore
         if (e.code === 'BracketRight') {
             if (saveSystem.load()) {
-                updateInvUI(); // Обновляем иконки внизу
+                updateInvUI();
                 if (debugConsole) {
-                    debugConsole.addMessage("ЗАГРУЗКА ВЫПОЛНЕНА ]", "#00ff00", "📂");
+                    debugConsole.addMessage("СИСТЕМА: Snapshot загружен успешно.", "#00ff00", "📂");
                 }
             } else {
                 if (debugConsole) {
-                    debugConsole.addMessage("НЕТ ФАЙЛА СОХРАНЕНИЯ", "#ff4444", "❌");
+                    debugConsole.addMessage("ОШИБКА: Snapshot не найден.", "#ff4444", "❌");
                 }
             }
         }
     });
-
 }
 
 init();
-
