@@ -1,4 +1,4 @@
-import { Application, Graphics, Container, Text, TextStyle } from 'pixi.js';
+import {Application, Graphics, Container, Text, TextStyle, Assets, Sprite} from 'pixi.js';
 import { gameState } from './GameState';
 import { Tile } from './Tile';
 import { UIManager } from './UIManager';
@@ -13,6 +13,42 @@ import { MainMenu } from "./MainMenu.js";
 import { HintSystem } from "./HintSystem.js";
 
 const app = new Application();
+
+const assetsToLoad = [
+    { alias: 'player', src: 'arts/operator.png' },
+    { alias: 'house', src: 'arts/command_center.png' },
+    { alias: 'scarecrow', src: 'arts/scarecrow_slot.png' },
+    { alias: 't_empty', src: 'arts/tile_empty.png' },
+    { alias: 't_plowed', src: 'arts/tile_plowed.png' },
+    { alias: 't_watered', src: 'arts/tile_watered.png' },
+    { alias: 't_well', src: 'arts/tile_well.png' },
+    { alias: 'p_rain', src: 'arts/particle_rain.png' },
+    { alias: 'p_sparkle', src: 'arts/particle_sparkle.png' },
+    // Предметы
+    { alias: 'item_green', src: 'arts/item_seed_green.png' },
+    { alias: 'item_blue', src: 'arts/item_seed_blue.png' },
+    { alias: 'item_red', src: 'arts/item_seed_red.png' },
+    { alias: 'item_preparator', src: 'arts/item_preparator.png' },
+    { alias: 'item_dispenser', src: 'arts/item_dispenser.png' },
+    { alias: 'item_fertilizer', src: 'arts/item_fertilizer.png' },
+    { alias: 'item_bucket', src: 'arts/item_bucket.png' },
+    { alias: 'item_credits', src: 'arts/item_credits.png' }
+];
+
+// Цикл для автоматической сборки стадий роста
+['green', 'blue', 'red'].forEach(color => {
+    for (let i = 0; i <= 3; i++) {
+        assetsToLoad.push({ alias: `${color}_${i}`, src: `arts/${color}_stage_${i}.png` });
+    }
+});
+
+export const textures = await Assets.load(assetsToLoad);
+
+// В начале main.js, где объявлены player, uiLayer и т.д.
+let fadeOverlay;
+let isFading = false;
+let fadeTargetAlpha = 0.9; // Финальная прозрачность (0.0 - 1.0)
+let fadeSpeed = 0.0005; // Скорость затемнения (чем меньше, тем медленнее)
 
 async function init() {
     // 1. ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ
@@ -100,10 +136,8 @@ async function init() {
     const rainDrops = [];
     const RAIN_COUNT = 100;
     for (let i = 0; i < RAIN_COUNT; i++) {
-        const drop = new Graphics()
-            .moveTo(0, 0)
-            .lineTo(-2, 10)
-            .stroke({ color: 0x00aaff, width: 1, alpha: 0.6 });
+        const drop = new Sprite(textures.p_rain);
+        drop.width = 8; drop.height = 16;
 
         drop.x = Math.random() * window.innerWidth;
         drop.y = Math.random() * window.innerHeight;
@@ -113,10 +147,9 @@ async function init() {
     }
 
     // 3. ОПЕРАТОР (Игрок)
-    const player = new Graphics()
-        .circle(0, 0, 18)
-        .fill(0x00ff00)
-        .stroke({ color: 0xffffff, width: 2 });
+    const player = new Sprite(textures.player);
+    player.anchor.set(0.5);
+    player.width = 40; player.height = 40;
     player.x = 200; player.y = 200;
     entityLayer.addChild(player);
 
@@ -176,14 +209,48 @@ async function init() {
             const item = gameState.inventory[i];
             slot.itemContainer.removeChildren();
             if (item) {
-                const icon = new Graphics().circle(25, 25, 12).fill(item.color);
-                slot.itemContainer.addChild(icon);
-                const countText = new Text({
-                    text: `x${item.count}`,
-                    style: { fill: 0xffffff, fontSize: 12, fontFamily: 'monospace' }
-                });
-                countText.x = 35; countText.y = 35;
-                slot.itemContainer.addChild(countText);
+
+                let textureAlias;
+
+                // 1. СЛОВАРЬ СОПОСТАВЛЕНИЯ (toolType -> fileName)
+                const toolMap = {
+                    'hoe': 'item_preparator',    // Твоя тяпка -> arts/item_preparator.png
+                    'can': 'item_dispenser',     // Лейка -> arts/item_dispenser.png
+                    'bucket': 'item_bucket',  // Если ведро выполняет ту же роль
+                    'fertilizer': 'item_fertilizer' // Например, если удобрение выглядит как красное зерно
+                };
+
+                // 2. ОПРЕДЕЛЯЕМ ТЕКСТУРУ
+                if (toolMap[item.toolType]) {
+                    // Если это инструмент из словаря
+                    textureAlias = toolMap[item.toolType];
+                } else if (item.type) {
+                    // Если это семена (green, blue, red)
+                    textureAlias = `item_${item.type}`;
+                }
+
+                // 3. ОТРИСОВКА СПРАЙТА
+                if (textures[textureAlias]) {
+                    const icon = new Sprite(textures[textureAlias]);
+                    icon.anchor.set(0.5);
+                    icon.x = 25;
+                    icon.y = 25;
+
+                    // Масштабируем, чтобы иконка аккуратно вписалась в слот 50х50
+                    const scale = 34 / Math.max(icon.texture.width, icon.texture.height);
+                    icon.scale.set(scale);
+
+                    slot.itemContainer.addChild(icon);
+                }
+
+                if (item.count > 1) {
+                    const countText = new Text({
+                        text: `x${item.count}`,
+                        style: { fill: 0xffffff, fontSize: 12, fontFamily: 'monospace', fontWeight: 'bold' }
+                    });
+                    countText.x = 30; countText.y = 32;
+                    slot.itemContainer.addChild(countText);
+                }
             }
         });
         const currentItem = gameState.inventory[gameState.selectedSlot];
@@ -196,7 +263,7 @@ async function init() {
     ui.addChild(phone);
 
     // COMMAND CENTER (Бывшие Руины)
-    const housePrice = 2500;
+    const housePrice = 52;
     const houseContainer = new Container();
     const gridX = 2;
     const gridY = 12;
@@ -252,6 +319,8 @@ async function init() {
 
             phone.addIncomingMessage("PIT BOSS", "Ничего себе терминал! Поздравляю с расширением инфраструктуры.");
             debugConsole.addMessage("СИСТЕМА: Центр управления развернут!", "#00ff00");
+
+            triggerGameOver();
         } else {
             debugConsole.addMessage(`ОШИБКА: Недостаточно кредитов! Нужно ${housePrice} CR.`, "#ff4444");
         }
@@ -308,14 +377,14 @@ async function init() {
 
     // ВХОДЯЩИЕ СООБЩЕНИЯ (Lore-Friendly)
     setTimeout(() => {
-        phone.addIncomingMessage("CORE_SYS", "Авторизация прошла успешно. Терминал готов к работе.");
+        phone.addIncomingMessage("CORE_SYS", "Авторизация прошла успешно. Терминал готов к работе. Для помощи используйте I, для сохранения - [, ]");
     }, 2000);
 
     // 1. Приветственный протокол
     setTimeout(() => {
         phone.addIncomingMessage(
             "PIT BOSS",
-            "Привет, оператор! Вижу, ты в сети. Чтобы начать игру, нужно подготовить 67 секторов (активируй их Slot-Preparator-ом). Сделаешь это — зачислю 50 CR на баланс!"
+            "Привет, оператор! Вижу, ты в сети. Чтобы начать игру, нужно подготовить 60 секторов (активируй их Slot-Preparator-ом). Сделаешь это — зачислю 100 CR на баланс!"
         );
         gameState.quests.plowCells.active = true;
     }, 12000);
@@ -334,8 +403,8 @@ async function init() {
                 gameState.gold += q.reward;
                 goldText.text = `CREDITS: ${gameState.gold}`;
 
-                phone.addIncomingMessage("PIT BOSS", "Секторы активны. Почва готова к загрузке ассетов. Вот твои 50 кредитов.");
-                debugConsole.addMessage("КВЕСТ: Секторы подготовлены! +50 CR", "#00ff00", "🏆");
+                phone.addIncomingMessage("PIT BOSS", "Секторы активны. Почва готова к загрузке ассетов. Вот твои 100 кредитов.");
+                debugConsole.addMessage("КВЕСТ: Секторы подготовлены! +100 CR", "#00ff00", "🏆");
 
                 setTimeout(() => {
                     startWaterQuest();
@@ -438,6 +507,120 @@ async function init() {
         // phone.addIncomingMessage("PIT BOSS", "Рад, что ты принял контракт. Начни с подготовки секторов, комиссия не ждет!");
     };
 
+    // Переменные для контроля финала
+    let glitchTimer = 0;
+    let isGlitching = false;
+    let finalStep = 0; // 0: глитч, 1: исчезновение, 2: затухание
+
+    function triggerGameOver() {
+        gameState.isGameOver = true;
+        isGlitching = true;
+
+        // Блокируем ввод и останавливаем игрока
+        player.vx = 0;
+        player.vy = 0;
+
+        if (debugConsole) debugConsole.addMessage("CRITICAL_ERROR: SYSTEM_CORRUPTION", "#ff0000");
+
+        // Через 3 секунды глитча — игрок исчезает
+        setTimeout(() => {
+            player.visible = false;
+            // Можно добавить звук "пшш" или частицы, если есть
+            finalStep = 1;
+
+            if (debugConsole) debugConsole.addMessage("USER_SESSION: TERMINATED", "#ff0000");
+
+            // Еще через 1.5 секунды — начинаем гасить экран
+            setTimeout(() => {
+                isGlitching = false;
+                finalStep = 2; // Переходим к затуханию
+                startFinalFade();
+            }, 1500);
+
+        }, 3000);
+    }
+
+    function startFinalFade() {
+        const overlay = new Graphics()
+            .rect(0, 0, app.screen.width, app.screen.height)
+            .fill({ color: 0x000000 });
+        overlay.alpha = 0;
+        ui.addChild(overlay);
+
+        // Плавное затухание через тикер
+        const fadeTicker = (time) => {
+            overlay.alpha += 0.005 * time.deltaTime;
+            if (overlay.alpha >= 1) {
+                app.ticker.remove(fadeTicker);
+                showCasinoText();
+            }
+        };
+        app.ticker.add(fadeTicker);
+    }
+
+    function showCasinoText() {
+        setTimeout(() => {
+            const casinoStyle = new TextStyle({
+                fontFamily: '"Verdana", "Geneva", sans-serif',
+                fontSize: 70, // Увеличил для пущего эффекта
+                // Используем строку для одного цвета, чтобы избежать ошибок парсинга массива
+                fill: '#ff0000',
+                fontWeight: '900',
+                align: 'center',
+                // В v8 stroke настраивается так:
+                stroke: {
+                    color: '#000000',
+                    width: 10,
+                    join: 'round'
+                },
+                dropShadow: {
+                    alpha: 0.5,
+                    blur: 15,
+                    color: '#ff0000',
+                    distance: 0,
+                },
+                letterSpacing: 5,
+                lineHeight: 85
+            });
+
+            const finalMsg = new Text({
+                text: 'НИКТО НЕ МОЖЕТ\nОБЫГРАТЬ КАЗИНО',
+                style: casinoStyle
+            });
+
+            finalMsg.anchor.set(0.5);
+            finalMsg.x = app.renderer.width / 2;
+            finalMsg.y = app.renderer.height / 2;
+
+
+                app.stage.addChild(finalMsg);
+
+
+            // Анимация (Ticker)
+            let elapsed = 0;
+            const animateFinal = (time) => {
+                if (finalMsg.destroyed) return;
+                elapsed += time.deltaTime * 0.05;
+
+                // Плавное дыхание текста
+                const s = 1 + Math.sin(elapsed * 0.5) * 0.03;
+                finalMsg.scale.set(s);
+
+                // Легкое смещение (эффект неисправного экрана)
+                if (Math.random() > 0.95) {
+                    finalMsg.x = (app.renderer.width / 2) + (Math.random() - 0.5) * 10;
+                    finalMsg.alpha = 0.5;
+                } else {
+                    finalMsg.x = app.renderer.width / 2;
+                    finalMsg.alpha = 1;
+                }
+            };
+            app.ticker.add(animateFinal);
+
+            if (debugConsole) debugConsole.addMessage("FATAL_ERROR: SESSION_TERMINATED", "#ff0000");
+        }, 800);
+    }
+
     const mainMenu = new MainMenu(app, startLevel);
     app.stage.addChild(mainMenu);
 
@@ -462,9 +645,35 @@ async function init() {
     window.addEventListener('keyup', (e) => gameState.keys[e.code] = false);
 
     // 8. ГЛАВНЫЙ ИГРОВОЙ ЦИКЛ (TICKER)
-    app.ticker.add((ticker) => {
-        const dt = ticker.deltaTime;
+    app.ticker.add((time) => {
+        const dt = time.deltaTime; // Учитываем дельту времени для плавности при любом FPS
 
+        if (isGlitching) {
+            glitchTimer += time.deltaTime;
+
+            // Каждые несколько кадров дергаем мир
+            if (Math.random() > 0.8) {
+                app.stage.x = (Math.random() - 0.5) * 15; // Тряска по X
+                app.stage.y = (Math.random() - 0.5) * 15; // Тряска по Y
+
+                // Глитч цвета (инверсия или тинт)
+                app.stage.tint = Math.random() > 0.5 ? 0xff0000 : 0x00ffff;
+            }
+
+            // Эффект "разреза" (масштабирование)
+            if (Math.random() > 0.95) {
+                app.stage.scale.set(1.02, 0.98);
+            } else {
+                app.stage.scale.set(1);
+            }
+        } else if (gameState.isGameOver && finalStep < 2) {
+            // Если глитч кончился, но экран еще не погас — возвращаем мир в покой
+            app.stage.x = 0;
+            app.stage.y = 0;
+            app.stage.tint = 0xffffff;
+        }
+
+        if (gameState.isGameOver) return;
         if (!gameStarted) {
             if (mainMenu && !mainMenu.destroyed) {
                 mainMenu.update(dt);
@@ -547,7 +756,7 @@ async function init() {
             setTimeout(() => {
                 phone.addIncomingMessage(
                     "PIT BOSS",
-                    "Доброе утро! Слушай, я видел те руины... Сердце кровью обливается. Давай восстановим Command Center. Материалы обойдутся в 2500 CR, но хакер без базы — это просто любитель!"
+                    "Доброе утро! Слушай, я видел те руины... Сердце кровью обливается. Давай восстановим Command Center. Материалы обойдутся в 1999 CR, но хакер без базы — это просто любитель!"
                 );
             }, 5000);
         }

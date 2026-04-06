@@ -94,7 +94,7 @@ export async function spinSlots(targetText, plantedData = { bonus: 1, isFertiliz
     // --- ВЫВОД В ТЕРМИНАЛ (DebugConsole) ---
     if (debugConsole) {
         const color = result.rewardGold > 0 ? '#00ff00' : '#ff4444';
-        const logMsg = `[${combination}] >> ${result.message} (${result.rewardGold} CR)`;
+        const logMsg = `[${combination}] >> ${result.message} (${result.rewardGold} CR) ${result.calcText}`;
         debugConsole.addMessage(logMsg, color, result.icon);
     }
 

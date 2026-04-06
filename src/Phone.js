@@ -65,15 +65,15 @@ export class Phone extends Container {
             .fill(0x111111);
         this.detailContainer.addChild(detBg);
 
-        this.backBtn = new Text({ text: "<< RETURN", style: { fill: '#00aaff', fontSize: 12, fontWeight: 'bold' } }); // Заменили Back
+        this.backBtn = new Text({ text: "<< RETURN", style: { fill: '#00aaff', fontSize: 10, fontWeight: 'bold' } }); // Заменили Back
         this.backBtn.x = 15; this.backBtn.y = 18;
         this.backBtn.eventMode = 'static';
         this.backBtn.cursor = 'pointer';
         this.backBtn.on('pointerdown', () => this.closeMessageDetail());
         this.detailContainer.addChild(this.backBtn);
 
-        this.detailSenderTxt = new Text({ text: "", style: { fill: '#ffffff', fontSize: 14, fontWeight: 'bold' } });
-        this.detailSenderTxt.x = this.phoneWidth / 2; this.detailSenderTxt.y = 18;
+        this.detailSenderTxt = new Text({ text: "", style: { fill: '#ffffff', fontSize: 12, fontWeight: 'bold' } });
+        this.detailSenderTxt.x = this.phoneWidth / 2 + 15; this.detailSenderTxt.y = 18;
         this.detailSenderTxt.anchor.set(0.5, 0);
         this.detailContainer.addChild(this.detailSenderTxt);
 
@@ -179,7 +179,7 @@ export class Phone extends Container {
         const forecast = this.timeSystem.getWeatherForecast();
 
         this.todayTxt.text = `Current Cycle:\n${forecast.todayTemp}°C ${forecast.todayIcon}`;
-        this.tomorrowTxt.text = `Next Spin:\n${forecast.tomorrowTemp}°C ${forecast.tomorrowIcon}`;
+        this.tomorrowTxt.text = `Next Cycle:\n${forecast.tomorrowTemp}°C ${forecast.tomorrowIcon}`;
         this.tomorrowTxt.style.fill = forecast.tomorrowIsRainy ? '#44aaff' : '#ffd700'; // Золотой цвет для солнечной погоды (Jackpot)
     }
 

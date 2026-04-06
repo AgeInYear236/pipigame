@@ -1,11 +1,12 @@
-import { Container, Graphics, Text, TextStyle } from 'pixi.js';
+import {Container, Graphics, Sprite, Text, TextStyle} from 'pixi.js';
 import { gameState } from './GameState';
 import { spinSlots } from './Casino';
+import { textures } from './main';
 
 export class Tile extends Container {
     constructor(type, gridX, gridY, tileSize, player, goldText, slotText, mapLayout, entityLayer, updateInvUI, debugConsole) {
         super();
-        this.type = type; // 0: трава, 1: сектор, 2: забор, 3: сервер
+        this.type = type; // 0: трава, 1: сектор, 2: забор, 3: сервер, 4: автомат
         this.gridX = gridX;
         this.gridY = gridY;
         this.tileSize = tileSize;
@@ -14,190 +15,106 @@ export class Tile extends Container {
         this.slotText = slotText;
         this.updateInvUI = updateInvUI;
         this.debugConsole = debugConsole;
-        this.isSolid = (type === 2);
-        this.isFertilized = false;
-        this.fertilizerPoints = [];
 
         this.x = gridX * tileSize;
         this.y = gridY * tileSize;
 
-        this.isGrowing = false;
+        this.isSolid = (type === 2);
         this.isWatered = false;
-        this.plantedType = null;
-        this.popUps = [];
-        this.baseGrowthSpeed = 0.0003;
+        this.isFertilized = false;
+        this.isGrowing = false;
 
-        this.bg = new Graphics();
-        this.drawBackground();
+        // Данные растения
+        this.plantedData = null; // { type: 'green', stage: 0, timer: 0 }
+        this.growthThreshold = 100; // Очки для перехода на следующую стадию
+
+        this.popUps = [];
+
+        // 1. СЛОЙ ЗЕМЛИ (Background)
+        this.bg = new Sprite(textures.t_empty);
+        this.bg.width = tileSize;
+        this.bg.height = tileSize;
         this.addChild(this.bg);
 
-        this.plant = new Graphics().rect(4, 4, 32, 32).fill(0xffffff);
-        this.plant.visible = false;
-        this.plant.scale.set(0.1);
-        this.plant.pivot.set(10, 12);
-        this.plant.x = 16;
-        this.plant.y = 16;
-        this.addChild(this.plant);
+        // 2. СЛОЙ ОБЪЕКТА (Plant / Scarecrow / Machine)
+        this.objectSprite = new Sprite();
+        this.objectSprite.anchor.set(0.5);
+        this.objectSprite.position.set(tileSize / 2, tileSize / 2);
+        this.objectSprite.visible = false;
+        this.addChild(this.objectSprite);
 
-        if (this.type === 2 && entityLayer) {
-            this.fenceVisual = new Graphics();
-            this.drawSmartFence(this.fenceVisual, mapLayout);
-            this.fenceVisual.x = this.x;
-            this.fenceVisual.y = this.y;
-            entityLayer.addChild(this.fenceVisual);
+        // 3. СЛОЙ SMART FENCE (Только для типа 2)
+        if (this.type === 2) {
+            this.fenceGraphics = new Graphics();
+            this.addChild(this.fenceGraphics);
+            this.drawSmartFence(mapLayout);
         }
 
+        this.updateVisual();
+
         this.eventMode = 'static';
+        this.cursor = 'pointer';
         this.on('pointerdown', () => this.handleClick());
     }
 
-    drawBackground() {
-        this.bg.clear();
-        const showingAsWatered = this.isWatered || (gameState.currentWeather === 'rainy');
+    updateVisual() {
+        const isRainy = (gameState.currentWeather === 'rainy');
+        const showingAsWatered = this.isWatered || isRainy;
 
-        let color = 0x3a7d32;
+        // Визуал ТАЙЛА (Земля)
         if (this.type === 1) {
-            color = showingAsWatered ? 0x3d2b1f : 0x6b4226;
-        } else if (this.type === 3) {
-            color = 0x1a1a1a; // Цвет корпуса сервера
+            this.bg.texture = showingAsWatered ? textures.t_watered : textures.t_plowed;
+            this.bg.tint = 0xffffff;
+            if (this.isFertilized) {
+                this.bg.tint = 0x00ff00; // Подсветить зеленым, если активен RTP Booster
+            }
+        } else if (this.type === 2) {
+            this.bg.texture = textures.t_empty;
+            this.bg.tint = 0x222222; // Забор (если нет спрайта, просто темним фон)
+        } else if (this.type === 3 || this.type === 4) {
+            this.bg.texture = textures.t_well;
+        } else {
+            this.bg.texture = textures.t_empty;
+            this.bg.tint = 0xffffff;
         }
+
+        // Визуал ОБЪЕКТА (Что сверху)
         if (this.type === 4) {
-            color = 0x555555;
+            this.objectSprite.visible = true;
+            this.objectSprite.texture = textures.scarecrow;
+            this.objectSprite.width = this.tileSize * 0.8;
+            this.objectSprite.height = this.tileSize * 0.8;
+        } else if (this.isGrowing && this.plantedData) {
+            this.objectSprite.visible = true;
+            // Динамическое имя: например 'green_2'
+            const texKey = `${this.plantedData.type}_${this.plantedData.stage}`;
+            this.objectSprite.texture = textures[texKey] || textures.green_0;
+
+            // Масштабируем в зависимости от стадии
+            const scaleMap = [0.4, 0.6, 0.8, 1.0];
+            const s = scaleMap[this.plantedData.stage] || 0.5;
+            this.objectSprite.width = this.tileSize * s;
+            this.objectSprite.height = this.tileSize * s;
+        } else {
+            this.objectSprite.visible = false;
         }
-
-        this.bg.rect(0, 0, this.tileSize, this.tileSize).fill(color);
-
-        if (this.type === 4) {
-            this.bg.rect(8, 4, this.tileSize - 16, this.tileSize - 8).fill(0x1a1a1a);
-            this.bg.rect(12, 8, this.tileSize - 24, 10).fill(0x00ff00, 0.3); // Экранчик пугала мерцает зеленым
-        }
-
-        if (this.type === 1 && this.isFertilized) {
-            this.fertilizerPoints.forEach(p => {
-                this.bg.rect(p.x, p.y, 2, 2).fill(0x00aaff); // Точки удобрения теперь неоново-синие
-            });
-        }
-
-        if (this.type === 3) {
-            this.bg.rect(10, 10, this.tileSize - 20, this.tileSize - 20).fill(0x00aaff, 0.5); // Синее свечение сервера
-        }
-
-        if (this.type === 1) {
-            const strokeColor = showingAsWatered ? 0x00ff00 : 0x553311; // Зеленый неон если полито
-            this.bg.stroke({ color: strokeColor, width: showingAsWatered ? 2 : 1, alignment: 1 });
-        }
-    }
-
-    drawSmartFence(g, map) {
-        const mid = this.tileSize / 2;
-        g.rect(mid - 6, mid - 6, 12, 12).fill(0x222222); // Металлический забор
-        const isF = (x, y) => map[y] && map[y][x] === 2;
-        if (isF(this.gridX, this.gridY - 1)) g.rect(mid - 4, 0, 8, mid).fill(0x333333);
-        if (isF(this.gridX, this.gridY + 1)) g.rect(mid - 4, mid, 8, mid).fill(0x333333);
-        if (isF(this.gridX - 1, this.gridY)) g.rect(0, mid - 4, mid, 8).fill(0x333333);
-        if (isF(this.gridX + 1, this.gridY)) g.rect(mid, mid - 4, mid, 8).fill(0x333333);
     }
 
     async handleClick() {
+        if (gameState.isGameOver) return; // Запрещаем любые действия
         if (this.isSolid || this.type === 4 || gameState.isSpinning) return;
 
+        // Проверка дистанции до игрока
         const dx = (this.x + this.tileSize / 2) - this.player.x;
         const dy = (this.y + this.tileSize / 2) - this.player.y;
-        if (Math.sqrt(dx * dx + dy * dy) > this.tileSize * 2) return;
+        if (Math.sqrt(dx * dx + dy * dy) > this.tileSize * 2.5) return;
 
         const item = gameState.inventory[gameState.selectedSlot];
 
-        // ЛОГИКА RTP BOOSTER (Удобрение)
-        if (this.type === 1 && item && item.type === 'fertilizer') {
-            if (!this.isFertilized) {
-                this.isFertilized = true;
-                this.fertilizerPoints = [];
-                for (let i = 0; i < 5; i++) {
-                    this.fertilizerPoints.push({
-                        x: Math.random() * (this.tileSize - 4),
-                        y: Math.random() * (this.tileSize - 4)
-                    });
-                }
-                item.count--;
-                if (item.count <= 0) gameState.inventory[gameState.selectedSlot] = null;
-
-                this.drawBackground();
-                this.updateInvUI();
-                if (this.debugConsole) this.debugConsole.addMessage("RTP BOOSTER АКТИВИРОВАН (+50% к заносу)", "#00ff00", "⚡");
-            }
-            return;
-        }
-
-        // ЛОГИКА DEEP-FLUID SERVER (Колодец)
-        if (this.type === 3) {
-            if (item && item.toolType === 'bucket') {
-                item.count = 5;
-                if (this.updateInvUI) this.updateInvUI();
-                if (this.debugConsole) this.debugConsole.addMessage("Ёмкость заполнена Liquid Luck", "#00ffff", "💧");
-            } else {
-                if (this.debugConsole) this.debugConsole.addMessage("Требуется пустой контейнер", "#cccccc");
-            }
-            return;
-        }
-
-        // ЛОГИКА BIO-SLOT PREPARATOR (Тяпка)
-        if (this.type === 0) {
-            if (item && item.toolType === 'hoe' && item.count > 0) {
-                this.type = 1;
-                item.count--;
-                if (item.count <= 0) gameState.inventory[gameState.selectedSlot] = null;
-                this.drawBackground();
-                if (this.updateInvUI) this.updateInvUI();
-                if (this.debugConsole) this.debugConsole.addMessage("Сектор активен. Принимаются ставки.", "#8bc34a");
-            }
-            return;
-        }
-
-        // ЛОГИКА LIQUID LUCK (Полив)
-        if (this.type === 1 && item && (item.toolType === 'can' || item.toolType === 'bucket')) {
-            if (!this.isWatered && item.count > 0) {
-                this.isWatered = true;
-                item.count--;
-
-                if (item.count <= 0) {
-                    if (item.toolType === 'can') {
-                        gameState.inventory[gameState.selectedSlot] = null;
-                        if (this.debugConsole) this.debugConsole.addMessage("Распылитель перегорел!", "#ff4444");
-                    } else {
-                        this.debugConsole?.addMessage("Запас Liquid Luck исчерпан!", "#ff4444");
-                    }
-                }
-
-                this.drawBackground();
-                if (this.updateInvUI) this.updateInvUI();
-                if (this.debugConsole) this.debugConsole.addMessage("Цикл ускорен. Анализ вероятностей: Оптимально.", "#00aaff");
-            } else if (item.count <= 0) {
-                if (this.debugConsole) this.debugConsole.addMessage("Нужна доза Liquid Luck!", "#ff4444");
-            }
-            return;
-        }
-
-        // ЛОГИКА СТАВКИ (Посадка семян)
-        if (this.type === 1 && !this.isGrowing) {
-            if (item && item.type && item.type !== 'tool' && item.count > 0) {
-                item.count--;
-                this.plantedType = { ...item };
-                if (item.count <= 0) gameState.inventory[gameState.selectedSlot] = null;
-
-                this.isGrowing = true;
-                this.plant.tint = item.color;
-                this.plant.visible = true;
-
-                if (this.updateInvUI) this.updateInvUI();
-                if (this.debugConsole) this.debugConsole.addMessage(`Ставка принята: ${item.name}`, "#ffd700", "🎰");
-            }
-            return;
-        }
-
-        // ЛОГИКА ПОДТВЕРЖДЕНИЯ СПИНА (Сбор урожая)
-        if (this.isGrowing && this.plant.scale.x >= 1) {
+        // 4. СБОР (Спин)
+        if (this.isGrowing && this.plantedData?.stage === 3) {
             const res = await spinSlots(this.slotText, {
-                bonus: this.plantedType.bonus,
+                bonus: this.plantedData.bonus,
                 isFertilized: this.isFertilized
             });
 
@@ -207,51 +124,181 @@ export class Tile extends Container {
                 this.spawnCoinText(res.rewardGold);
             }
 
+            // Сброс клетки
             this.isGrowing = false;
             this.isWatered = false;
             this.isFertilized = false;
-            this.plant.visible = false;
-            this.plant.scale.set(0.1);
-            this.drawBackground();
-            if (this.updateInvUI) this.updateInvUI();
+            this.plantedData = null;
+            this.updateVisual();
+            return;
+        }
+
+
+        if (this.type === 3) {
+            if (item && item.toolType === 'bucket') {
+                // Устанавливаем заряды ведра в 5
+                item.count = 5;
+
+                // Важно: вызываем обновление интерфейса, чтобы x0 сменилось на x5
+                if (this.updateInvUI) this.updateInvUI();
+
+                if (this.debugConsole) {
+                    this.debugConsole.addMessage("СИНХРОНИЗАЦИЯ: Резервуар заполнен Liquid Luck", "#00ffff", "💧");
+                }
+            } else {
+                if (this.debugConsole) {
+                    this.debugConsole.addMessage("СИСТЕМА: Требуется пустой контейнер (Bucket)", "#666666");
+                }
+            }
+            return; // Выходим, чтобы не сработали другие логики клика
+        }
+
+        if (this.type === 1 && item.type === 'fertilizer') {
+            if (!this.isFertilized) {
+                this.isFertilized = true;
+                this.consumeItem(item); // Уменьшаем количество
+                this.updateVisual();
+                if (this.debugConsole) this.debugConsole.addMessage("RTP BOOSTER: ШАНС ЗАНОСА УВЕЛИЧЕН", "#00ff00");
+            } else {
+                this.debugConsole?.addMessage("СЕКТОР УЖЕ ОПТИМИЗИРОВАН", "#aaaaaa");
+            }
+            return; // ОБЯЗАТЕЛЬНО выходим, чтобы не сработала посадка ниже!
+        }
+
+        // 1. АКТИВАЦИЯ СЕКТОРА (Preparator / Hoe)
+        if (this.type === 0 && item?.toolType === 'hoe') {
+            this.type = 1;
+            this.consumeItem(item);
+            this.updateVisual();
+            this.debugConsole?.addMessage("СЕКТОР АКТИВИРОВАН", "#00ff00");
+            return;
+        }
+
+        // 2. ПОЛИВ (Dispenser / Can / Bucket)
+        if (this.type === 1 && !this.isWatered && (item?.toolType === 'can' || item?.toolType === 'bucket')) {
+            if (item.count > 0) {
+                this.isWatered = true;
+                this.consumeItem(item);
+                this.updateVisual();
+                this.debugConsole?.addMessage("ЦИКЛ УСКОРЕН", "#00aaff");
+            }
+            return;
+        }
+
+        // 3. СТАВКА (Посадка семян)
+        if (this.type === 1 && !this.isGrowing && item?.type && item.type !== 'tool') {
+            this.plantedData = {
+                type: item.type, // 'green', 'blue', 'red'
+                stage: 0,
+                timer: 0,
+                bonus: item.bonus || 0,
+                name: item.name
+            };
+            this.isGrowing = true;
+            this.consumeItem(item);
+            this.updateVisual();
+            this.debugConsole?.addMessage(`СТАВКА: ${this.plantedData.name}`, "#ffd700");
+            return;
+        }
+
+
+    }
+
+    consumeItem(item) {
+        item.count--;
+
+        // Если это ведро, оно остается в инвентаре даже с 0 зарядов
+        if (item.count <= 0) {
+            if (item.toolType === 'bucket') {
+                item.count = 0; // Оставляем пустое ведро
+                if (this.debugConsole) this.debugConsole.addMessage("Контейнер пуст. Нужна дозаправка.", "#ff4444");
+            } else {
+                // Для остальных (семена, одноразовые лейки) — удаляем
+                gameState.inventory[gameState.selectedSlot] = null;
+            }
+        }
+
+        this.updateInvUI();
+    }
+
+    drawSmartFence(map) {
+        const g = this.fenceGraphics;
+        const mid = this.tileSize / 2;
+        const thickness = 6; // Толщина перекладин
+
+        g.clear();
+
+        // Центральный столб
+        g.rect(mid - 8, mid - 8, 16, 16).fill(0x1a1a1a);
+        g.stroke({ color: 0x00ff00, width: 1, alpha: 0.5 }); // Неоновая окантовка столба
+
+        // Проверка соседей (тип 2 — забор)
+        const isF = (x, y) => map[y] && map[y][x] === 2;
+
+        // Отрисовка соединений
+        if (isF(this.gridX, this.gridY - 1)) { // Сверху
+            g.rect(mid - thickness / 2, 0, thickness, mid).fill(0x333333);
+        }
+        if (isF(this.gridX, this.gridY + 1)) { // Снизу
+            g.rect(mid - thickness / 2, mid, thickness, mid).fill(0x333333);
+        }
+        if (isF(this.gridX - 1, this.gridY)) { // Слева
+            g.rect(0, mid - thickness / 2, mid, thickness).fill(0x333333);
+        }
+        if (isF(this.gridX + 1, this.gridY)) { // Справа
+            g.rect(mid, mid - thickness / 2, mid, thickness).fill(0x333333);
         }
     }
 
     spawnCoinText(amount) {
-        const style = new TextStyle({
-            fill: '#00ff00', fontSize: 24, fontWeight: 'bold', stroke: { color: '#000000', width: 3 }
+        const txt = new Text({
+            text: `+${amount} CR`,
+            style: { fill: '#00ff00', fontSize: 20, fontWeight: 'bold', fontFamily: 'monospace' }
         });
-        const txt = new Text({ text: `+${amount} CR`, style }); // Изменил 🪙 на CR
         txt.anchor.set(0.5);
         txt.x = this.tileSize / 2;
-        txt.y = 0;
+        txt.y = 10;
         this.addChild(txt);
         this.popUps.push(txt);
     }
 
     update(dt) {
-        if (this.isGrowing && this.plant.scale.x < 1) {
-            const effectivelyWatered = this.isWatered || (gameState.currentWeather === 'rainy');
-            const multiplier = effectivelyWatered ? 2 : 1;
-            this.plant.scale.x += this.baseGrowthSpeed * multiplier * dt;
-            this.plant.scale.y += this.baseGrowthSpeed * multiplier * dt;
-        }
 
         if (this.type === 1) {
-            const shouldShowWatered = this.isWatered || (gameState.currentWeather === 'rainy');
-            if (this.lastWaterState !== shouldShowWatered) {
-                this.lastWaterState = shouldShowWatered;
-                this.drawBackground();
+            const isRainy = (gameState.currentWeather === 'rainy');
+            const shouldShowWatered = this.isWatered || isRainy;
+
+            // Если текущее состояние текстуры не совпадает с погодным — обновляем
+            if (this.lastVisualState !== shouldShowWatered) {
+                this.lastVisualState = shouldShowWatered;
+                this.updateVisual();
             }
         }
 
+        // Логика роста
+        if (this.isGrowing && this.plantedData && this.plantedData.stage < 3) {
+            const isRainy = (gameState.currentWeather === 'rainy');
+            const multiplier = (this.isWatered || isRainy) ? 2.5 : 1.0;
+
+            this.plantedData.timer += dt * multiplier * 0.2; // Скорость роста
+
+            if (this.plantedData.timer >= this.growthThreshold) {
+                this.plantedData.stage++;
+                this.plantedData.timer = 0;
+                this.updateVisual();
+                if (this.debugConsole && this.plantedData.stage === 3) {
+                    this.debugConsole.addMessage("АССЕТ СФОРМИРОВАН. ЖМИ ДЛЯ СПИНА", "#ffd700");
+                }
+            }
+        }
+
+        // Всплывающие тексты
         for (let i = this.popUps.length - 1; i >= 0; i--) {
             const txt = this.popUps[i];
-            txt.y -= 1 * dt;
-            txt.alpha -= 0.02 * dt;
+            txt.y -= 0.5 * dt;
+            txt.alpha -= 0.01 * dt;
             if (txt.alpha <= 0) {
                 this.removeChild(txt);
-                txt.destroy();
                 this.popUps.splice(i, 1);
             }
         }
