@@ -265,7 +265,7 @@ async function init() {
     ui.addChild(phone);
 
     // COMMAND CENTER (Бывшие Руины)
-    const housePrice = 52;
+    const housePrice = 1999;
     const houseContainer = new Container();
     const gridX = 2;
     const gridY = 12;
