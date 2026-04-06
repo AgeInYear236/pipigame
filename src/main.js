@@ -14,9 +14,11 @@ import { HintSystem } from "./HintSystem.js";
 
 const app = new Application();
 
+
 const assetsToLoad = [
     { alias: 'player', src: 'arts/operator.png' },
-    { alias: 'house', src: 'arts/command_center.png' },
+    { alias: 'house', src: 'arts/house.png' },
+    { alias: 'house2', src: 'arts/house2.png' },
     { alias: 'scarecrow', src: 'arts/scarecrow_slot.png' },
     { alias: 't_empty', src: 'arts/tile_empty.png' },
     { alias: 't_plowed', src: 'arts/tile_plowed.png' },
@@ -270,23 +272,19 @@ async function init() {
     houseContainer.x = gridX * 50;
     houseContainer.y = gridY * 50;
 
-    const houseBg = new Graphics();
+    const houseBg = new Sprite(textures.house); // Стартуем с первой стадии
+    houseBg.width = 150;
+    houseBg.height = 150;
+
     const drawHouseState = (isBuilt) => {
-        houseBg.clear();
         if (!isBuilt) {
-            // DECOMMISSIONED UNIT: Серый блок фундамента
-            houseBg.rect(0, 0, 150, 150).fill({ color: 0x222222, alpha: 1 });
-            for(let i=0; i<6; i++) {
-                houseBg.rect(Math.random()*100, Math.random()*100, 40, 5).fill(0x00ff00);
-            }
-            houseBg.stroke({ color: 0x444444, width: 4 });
+            houseBg.texture = textures.house; // Просто меняем текстуру
         } else {
-            // COMMAND CENTER: Высокотехнологичный узел
-            houseBg.rect(0, 0, 150, 150).fill(0x1a1a1a);
-            houseBg.rect(10, 10, 130, 80).fill(0x002244); // Основной экран мониторинга
-            houseBg.rect(60, 100, 30, 50).fill(0x333333); // Гермозатвор
-            houseBg.stroke({ color: 0x00aaff, width: 5 });
+            houseBg.texture = textures.house2; // На текстуру готового дома
         }
+
+        houseBg.width = 150;
+        houseBg.height = 150;
     };
 
     drawHouseState(gameState.houseBuilt);
@@ -472,7 +470,7 @@ async function init() {
     const startWaterQuest = () => {
         phone.addIncomingMessage(
             "PIT BOSS",
-            "Слушай, ассеты перегреваются! Используй LL-Dispenser или жди протокола 'Liquid Luck', чтобы охладить 25 секторов. Сделаешь — получишь кэшбек."
+            "Слушай, ассеты перегреваются! Используй LL-Dispenser или жди протокола 'Liquid Luck', чтобы охладить 50 секторов. Сделаешь — получишь кэшбек."
         );
         gameState.quests.waterCells.active = true;
     };
@@ -498,6 +496,10 @@ async function init() {
         if (gameState.gold < 0) {
             phone.addIncomingMessage("BANK_UNIT", "Внимание! Отрицательный баланс. Срочно реализуй ассеты, иначе доступ будет заблокирован!");
         }
+        // Внутри апдейта, после списания налогов или покупки:
+        if (gameState.gold < -24 && !gameState.isGameOver) {
+            triggerGameOver(true); // Передаем true, что это проигрыш
+        }
     }
 
     let gameStarted = false;
@@ -512,112 +514,96 @@ async function init() {
     let isGlitching = false;
     let finalStep = 0; // 0: глитч, 1: исчезновение, 2: затухание
 
-    function triggerGameOver() {
+    // Обнови функцию, чтобы она принимала флаг проигрыша
+    function triggerGameOver(isLoss = false) {
         gameState.isGameOver = true;
         isGlitching = true;
 
-        // Блокируем ввод и останавливаем игрока
-        player.vx = 0;
-        player.vy = 0;
+        player.vx = 0; player.vy = 0;
 
-        if (debugConsole) debugConsole.addMessage("CRITICAL_ERROR: SYSTEM_CORRUPTION", "#ff0000");
+        const errorCode = isLoss ? "DEBT_LIMIT_EXCEEDED" : "SYSTEM_CORRUPTION";
+        if (debugConsole) debugConsole.addMessage(`CRITICAL_ERROR: ${errorCode}`, "#ff0000");
 
-        // Через 3 секунды глитча — игрок исчезает
         setTimeout(() => {
             player.visible = false;
-            // Можно добавить звук "пшш" или частицы, если есть
             finalStep = 1;
 
-            if (debugConsole) debugConsole.addMessage("USER_SESSION: TERMINATED", "#ff0000");
+            const statusMsg = isLoss ? "USER_LIQUIDATED" : "USER_SESSION: TERMINATED";
+            if (debugConsole) debugConsole.addMessage(statusMsg, "#ff0000");
 
-            // Еще через 1.5 секунды — начинаем гасить экран
             setTimeout(() => {
                 isGlitching = false;
-                finalStep = 2; // Переходим к затуханию
-                startFinalFade();
+                finalStep = 2;
+                startFinalFade(isLoss); // Передаем флаг дальше
             }, 1500);
-
         }, 3000);
     }
 
-    function startFinalFade() {
+// В startFinalFade тоже прокидываем флаг
+    function startFinalFade(isLoss) {
         const overlay = new Graphics()
             .rect(0, 0, app.screen.width, app.screen.height)
             .fill({ color: 0x000000 });
         overlay.alpha = 0;
         ui.addChild(overlay);
 
-        // Плавное затухание через тикер
         const fadeTicker = (time) => {
             overlay.alpha += 0.005 * time.deltaTime;
             if (overlay.alpha >= 1) {
                 app.ticker.remove(fadeTicker);
-                showCasinoText();
+                showCasinoText(isLoss); // Вызываем финал с нужным текстом
             }
         };
         app.ticker.add(fadeTicker);
     }
 
-    function showCasinoText() {
+    function showCasinoText(isLoss = false) {
         setTimeout(() => {
             const casinoStyle = new TextStyle({
                 fontFamily: '"Verdana", "Geneva", sans-serif',
-                fontSize: 70, // Увеличил для пущего эффекта
-                // Используем строку для одного цвета, чтобы избежать ошибок парсинга массива
+                fontSize: 50,
                 fill: '#ff0000',
                 fontWeight: '900',
                 align: 'center',
-                // В v8 stroke настраивается так:
-                stroke: {
-                    color: '#000000',
-                    width: 10,
-                    join: 'round'
-                },
-                dropShadow: {
-                    alpha: 0.5,
-                    blur: 15,
-                    color: '#ff0000',
-                    distance: 0,
-                },
-                letterSpacing: 5,
-                lineHeight: 85
+                stroke: {color: '#000000', width: 10, join: 'round'},
+                dropShadow: {alpha: 0.5, blur: 15, color: '#ff0000', distance: 0},
+                lineHeight: 70
             });
 
             const finalMsg = new Text({
-                text: 'НИКТО НЕ МОЖЕТ\nОБЫГРАТЬ КАЗИНО',
+                text: isLoss ? 'ОБЪЕКТ УТИЛИЗИРОВАН\nВАШ ДОЛГ ПРИНАДЛЕЖИТ НАМ' : 'НИКТО НЕ МОЖЕТ\nОБЫГРАТЬ КАЗИНО',
                 style: casinoStyle
             });
 
             finalMsg.anchor.set(0.5);
-            finalMsg.x = app.renderer.width / 2;
-            finalMsg.y = app.renderer.height / 2;
+            finalMsg.x = app.screen.width / 2;
+            finalMsg.y = app.screen.height / 2;
 
+            // ПРАВКА: Добавляем ПРЯМО в app.stage, чтобы он был поверх UI и World
+            app.stage.addChild(finalMsg);
 
-                app.stage.addChild(finalMsg);
-
-
-            // Анимация (Ticker)
-            let elapsed = 0;
-            const animateFinal = (time) => {
+            // ПРАВКА: Используем выделенный тикер, который НЕ блокируется флагом isGameOver
+            const textTicker = (time) => {
                 if (finalMsg.destroyed) return;
-                elapsed += time.deltaTime * 0.05;
 
-                // Плавное дыхание текста
-                const s = 1 + Math.sin(elapsed * 0.5) * 0.03;
-                finalMsg.scale.set(s);
+                // Простая анимация "дыхания"
+                const elapsed = performance.now() * 0.002;
+                finalMsg.scale.set(1 + Math.sin(elapsed) * 0.03);
 
-                // Легкое смещение (эффект неисправного экрана)
-                if (Math.random() > 0.95) {
-                    finalMsg.x = (app.renderer.width / 2) + (Math.random() - 0.5) * 10;
+                // Редкий глитч
+                if (Math.random() > 0.98) {
+                    finalMsg.x = (app.screen.width / 2) + (Math.random() - 0.5) * 20;
                     finalMsg.alpha = 0.5;
                 } else {
-                    finalMsg.x = app.renderer.width / 2;
+                    finalMsg.x = app.screen.width / 2;
                     finalMsg.alpha = 1;
                 }
             };
-            app.ticker.add(animateFinal);
 
-            if (debugConsole) debugConsole.addMessage("FATAL_ERROR: SESSION_TERMINATED", "#ff0000");
+            // Добавляем этот специфичный тикер в приложение
+            app.ticker.add(textTicker);
+
+            console.log("FINAL TEXT RENDERED:", finalMsg.text);
         }, 800);
     }
 
@@ -680,6 +666,7 @@ async function init() {
             }
             return;
         }
+
 
         checkQuests();
         environment.update(dt);
@@ -771,7 +758,7 @@ async function init() {
         slotText.x = window.innerWidth / 2;
         itemLabel.x = window.innerWidth / 2;
         shop.resize();
-        phoneBtn.x = window.innerWidth - 70;
+        phoneBtn.x = window.innerWidth - 140;
         phone.resize();
     });
 

@@ -1,7 +1,7 @@
 // TimeSystem.js
 export class TimeSystem {
     constructor() {
-        this.hour = 12;
+        this.hour = 6;
         this.minute = 0;
         this.day = 1;
         this.gameTimeScale = 2;

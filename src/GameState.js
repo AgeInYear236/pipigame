@@ -1,5 +1,5 @@
 export const gameState = {
-    gold: 175,
+    gold: 200,
     isGameOver: false,
     quests: {
         plowCells: {
@@ -11,10 +11,10 @@ export const gameState = {
         },
         waterCells: {
             active: false,
-            target: 25,
+            target: 50,
             current: 0,
             completed: false,
-            reward: 50
+            reward: 100
         },
         blueSeeds: {
             active :false,
