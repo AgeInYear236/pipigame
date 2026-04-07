@@ -1,3 +1,5 @@
+import '@pixi/unsafe-eval'; // Просто добавьте этот импорт
+
 import {Application, Graphics, Container, Text, TextStyle, Assets, Sprite} from 'pixi.js';
 import { gameState } from './GameState';
 import { Tile } from './Tile';
@@ -12,7 +14,6 @@ import { Environment } from "./Environment.js";
 import { MainMenu } from "./MainMenu.js";
 import { HintSystem } from "./HintSystem.js";
 
-const app = new Application();
 
 
 const assetsToLoad = [
@@ -45,12 +46,13 @@ const assetsToLoad = [
 });
 
 export const textures = await Assets.load(assetsToLoad);
+const app = new Application();
+await app.init({
+    resizeTo: window,
+    backgroundColor: '#0a1a0a'
+});
 
-// В начале main.js, где объявлены player, uiLayer и т.д.
-let fadeOverlay;
-let isFading = false;
-let fadeTargetAlpha = 0.9; // Финальная прозрачность (0.0 - 1.0)
-let fadeSpeed = 0.0005; // Скорость затемнения (чем меньше, тем медленнее)
+const timeSpanMult = 8;
 
 async function init() {
     // 1. ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ
@@ -672,7 +674,7 @@ async function init() {
         environment.update(dt);
 
         // Время и Ночной Протокол
-        timeSystem.update(dt * 10, debugConsole);
+        timeSystem.update(dt * timeSpanMult, debugConsole);
         timeText.text = `CYCLE ${timeSystem.day} | SYNC: ${timeSystem.getTimeString()}`;
 
         // Списания (House Edge)

@@ -38,10 +38,10 @@ export const gameState = {
     taxPaidToday: false,
     inventory: [
         { name: 'Slot-Lime [Low Volatility]', type: 'green', bonus: 3, color: 0x32cd32, count: 10 },
-        { name: 'Roulette-Cherry [High Stakes]', type: 'red', bonus: 10, color: 0xff4500, count: 3 },
+        { name: 'Roulette-Cherry [High Stakes]', type: 'red', bonus: 13, color: 0xff4500, count: 3 },
         { name: 'Bio-Slot Preparator', type: 'tool', toolType: 'hoe', color: 0xaaaaaa, count: 2 },
         { name: 'Bucket Luck', type: 'tool', toolType: 'bucket', color: 0x708090,  count: 2},
-        { name: 'RTP Booster (+50%)', type: 'fertilizer', price: 30, count: 2, color: 0xffffff },
+        { name: 'RTP Booster (+50%)', type: 'fertilizer', price: 30, count: 5, color: 0xffffff },
         null,
         null, null, null, null
     ]
