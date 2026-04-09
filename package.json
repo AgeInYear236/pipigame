@@ -1,30 +1,15 @@
 {
   "name": "pipitest",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "1.0.0",
   "main": "main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "concurrently \"npm run dev\" \"wait-on http://127.0.0.1:5173 && electron .\"",
-    "dist": "vite build && electron-builder"
-  },
-  "devDependencies": {
-    "concurrently": "^9.2.1",
-    "electron": "^41.1.1",
-    "electron-builder": "^26.8.1",
-    "terser": "^5.46.1",
-    "vite": "^7.3.1",
-    "wait-on": "^9.0.4"
-  },
-  "dependencies": {
-    "@pixi/unsafe-eval": "^7.4.3",
-    "pixi.js": "^8.16.0"
+    "tauri": "tauri"
   },
   "build": {
-    "appId": "com.pipitest.app",
+    "appId": "com.yourname.pipitest",
     "files": [
       "dist/**/*",
       "main.cjs",
@@ -33,10 +18,21 @@
     "directories": {
       "output": "release"
     },
+    "win": {
+      "target": "portable"
+    },
     "linux": {
       "target": "AppImage",
       "category": "Game"
-    },
-    "asar": true
+    }
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1"
+  },
+  "dependencies": {
+    "@pixi/sound": "^6.0.1",
+    "@pixi/unsafe-eval": "^7.4.3",
+    "pixi.js": "^8.17.1",
+    "vite": "^8.0.7"
   }
 }

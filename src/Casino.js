@@ -1,4 +1,6 @@
-import { gameState } from './GameState';
+import { textures } from './main';
+import {sound} from "@pixi/sound";
+import {gameState} from "./GameState";
 
 let debugConsole = null;
 
@@ -41,6 +43,9 @@ export async function spinSlots(targetText, plantedData = { bonus: 1, isFertiliz
         result.calcText = 'Сектор пуст';
         result.icon = '💀';
         result.rewardGold = 0;
+        if (sound.exists('prop_sfx')) {
+            sound.play('prop_sfx', {volume: 0.6});
+        }
 
     } else if (countZeros === 2) {
         // Два нуля
@@ -48,6 +53,9 @@ export async function spinSlots(targetText, plantedData = { bonus: 1, isFertiliz
         result.calcText = '0 CR';
         result.icon = '😐';
         result.rewardGold = 0;
+        if (sound.exists('prop_sfx')) {
+            sound.play('prop_sfx', {volume: 0.6});
+        }
 
     } else if (countZeros === 1) {
         // Один ноль (Фикса)
@@ -56,11 +64,15 @@ export async function spinSlots(targetText, plantedData = { bonus: 1, isFertiliz
         result.calcText = `${fixedAmount} CR (RTP Booster игнорируется)`;
         result.icon = '🪙';
         result.rewardGold = fixedAmount;
-
+        if (sound.exists('prop2_sfx')) {
+            sound.play('prop2_sfx', {volume: 0.6});
+        }
     } else {
         // НУЛЕЙ НЕТ - Успешная комбинация
         result.icon = '💎';
-
+        if (sound.exists('prop2_sfx')) {
+            sound.play('prop2_sfx', {volume: 0.6});
+        }
         if (isAllSame) {
             if (res[0] === 1) {
                 // 1-1-1
@@ -98,5 +110,5 @@ export async function spinSlots(targetText, plantedData = { bonus: 1, isFertiliz
         debugConsole.addMessage(logMsg, color, result.icon);
     }
 
-    return { rewardGold: result.rewardGold };
+    return {rewardGold: result.rewardGold};
 }

@@ -1,7 +1,9 @@
-import {Container, Graphics, Sprite, Text, TextStyle} from 'pixi.js';
+import {Assets, Container, Graphics, Sprite, Text, TextStyle} from 'pixi.js';
 import { gameState } from './GameState';
 import { spinSlots } from './Casino';
 import { textures } from './main';
+import {sound} from "@pixi/sound";
+
 
 export class Tile extends Container {
     constructor(type, gridX, gridY, tileSize, player, goldText, slotText, mapLayout, entityLayer, updateInvUI, debugConsole) {
@@ -113,6 +115,7 @@ export class Tile extends Container {
 
         // 4. СБОР (Спин)
         if (this.isGrowing && this.plantedData?.stage === 3) {
+            if (sound.exists('click_sfx')) sound.play('click_sfx', { volume: 0.6 });
             const res = await spinSlots(this.slotText, {
                 bonus: this.plantedData.bonus,
                 isFertilized: this.isFertilized

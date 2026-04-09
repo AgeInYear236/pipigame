@@ -5,23 +5,23 @@ function createWindow() {
     const win = new BrowserWindow({
         width: 1920,
         height: 1000,
-        backgroundColor: '#0a1a0a',
         webPreferences: {
-            contextIsolation: true,
-            nodeIntegration: false
+            nodeIntegration: true
         }
     });
 
-    if (!app.isPackaged) {
-        // В деве подключаемся к серверу, который запустил concurrently
-        win.loadURL('http://127.0.0.1:5173').catch(() => {
-            // Если вдруг не успел, пробуем еще раз через секунду
-            setTimeout(() => win.loadURL('http://127.0.0.1:5173'), 1000);
-        });
+    // В разработке загружаем с сервера Vite, в билде — из папки dist
+    if (process.env.NODE_ENV === 'development') {
+        win.loadURL('http://localhost:5173');
     } else {
-        // В AppImage открываем готовый файл
-        win.loadFile(path.join(__dirname, 'dist', 'index.html'));
+        // ВАЖНО: убедитесь, что путь ведет именно в папку dist,
+        // которую создает Vite после npm run build
+        win.loadFile(path.join(__dirname, 'dist/index.html'));
     }
 }
 
 app.whenReady().then(createWindow);
+
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+});
