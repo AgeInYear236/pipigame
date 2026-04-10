@@ -1,3 +1,5 @@
+import '@pixi/unsafe-eval'; // Просто добавьте этот импорт
+
 import {Application, Graphics, Container, Text, TextStyle, Assets, Sprite} from 'pixi.js';
 import { gameState } from './GameState';
 import { Tile } from './Tile';
@@ -11,8 +13,7 @@ import { Phone } from "./Phone.js";
 import { Environment } from "./Environment.js";
 import { MainMenu } from "./MainMenu.js";
 import { HintSystem } from "./HintSystem.js";
-
-const app = new Application();
+import { sound } from '@pixi/sound'; // Импортируем модуль звука
 
 
 const assetsToLoad = [
@@ -34,7 +35,14 @@ const assetsToLoad = [
     { alias: 'item_dispenser', src: 'arts/item_dispenser.png' },
     { alias: 'item_fertilizer', src: 'arts/item_fertilizer.png' },
     { alias: 'item_bucket', src: 'arts/item_bucket.png' },
-    { alias: 'item_credits', src: 'arts/item_credits.png' }
+    { alias: 'item_credits', src: 'arts/item_credits.png' },
+
+    { alias: 'bg_music', src: 'music/g.mp3' },
+    { alias: 'click_sfx', src: 'music/click.wav' },
+    { alias: 'select_sfx', src: 'music/select.wav' },
+    { alias: 'prop_sfx', src: 'music/prop.wav' },
+    { alias: 'prop2_sfx', src: 'music/goodRoll.wav' },
+    { alias: 'message_sfx', src: 'music/message.wav' }
 ];
 
 // Цикл для автоматической сборки стадий роста
@@ -45,12 +53,19 @@ const assetsToLoad = [
 });
 
 export const textures = await Assets.load(assetsToLoad);
+if (sound.exists('bg_music')) {
+    sound.play('bg_music', {
+        loop: true,
+        volume: 0.02 // 30% громкости
+    });
+}
+const app = new Application();
+await app.init({
+    resizeTo: window,
+    backgroundColor: '#0a1a0a'
+});
 
-// В начале main.js, где объявлены player, uiLayer и т.д.
-let fadeOverlay;
-let isFading = false;
-let fadeTargetAlpha = 0.9; // Финальная прозрачность (0.0 - 1.0)
-let fadeSpeed = 0.0005; // Скорость затемнения (чем меньше, тем медленнее)
+const timeSpanMult = 8;
 
 async function init() {
     // 1. ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ
@@ -199,6 +214,11 @@ async function init() {
     ui.addChild(invContainer);
 
     const updateInvUI = () => {
+
+        if (sound.exists('select_sfx')) {
+            sound.play('select_sfx', { volume: 0.4 });
+        }
+
         slotContainers.forEach((slot, i) => {
             slot.bg.clear()
                 .roundRect(0, 0, 50, 50, 8)
@@ -263,6 +283,14 @@ async function init() {
 
     const phone = new Phone(app, debugConsole, timeSystem);
     ui.addChild(phone);
+
+    const originalAddMessage = phone.addIncomingMessage.bind(phone);
+    phone.addIncomingMessage = (sender, text) => {
+        originalAddMessage(sender, text);
+        if (sound.exists('message_sfx')) {
+            sound.play('message_sfx', { volume: 0.2 });
+        }
+    };
 
     // COMMAND CENTER (Бывшие Руины)
     const housePrice = 1999;
@@ -672,7 +700,7 @@ async function init() {
         environment.update(dt);
 
         // Время и Ночной Протокол
-        timeSystem.update(dt * 10, debugConsole);
+        timeSystem.update(dt * timeSpanMult, debugConsole);
         timeText.text = `CYCLE ${timeSystem.day} | SYNC: ${timeSystem.getTimeString()}`;
 
         // Списания (House Edge)

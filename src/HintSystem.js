@@ -65,7 +65,7 @@ export class HintSystem extends Container {
         } else if (item.type === 'blue') {
             desc = `[INDIGO PULSE]\nКвантовый сорт. Множитель джекпота: x50. Внимание: Высокая волатильность!`;
         } else if (item.type === 'red') {
-            desc = `[ROULETTE-CHERRY]\nКлассический слот. Высокие ставки, агрессивный рост. Прибыль: 10 CR.`;
+            desc = `[ROULETTE-CHERRY]\nКлассический слот. Высокие ставки, агрессивный рост. Прибыль: 13 CR.`;
         } else if (item.type === 'green') {
             desc = `[SLOT-LIME]\nНизкая волатильность. Стабильные выплаты для новичков. Прибыль: 3 CR.`;
         } else if (item.toolType === 'bucket') {

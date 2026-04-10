@@ -1,17 +1,38 @@
 {
   "name": "pipitest",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "1.0.0",
+  "main": "main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "build": {
+    "appId": "com.yourname.pipitest",
+    "files": [
+      "dist/**/*",
+      "main.cjs",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "portable"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Game"
+    }
   },
   "devDependencies": {
-    "vite": "^7.3.1"
+    "@tauri-apps/cli": "^2.10.1"
   },
   "dependencies": {
-    "pixi.js": "^8.16.0"
+    "@pixi/sound": "^6.0.1",
+    "@pixi/unsafe-eval": "^7.4.3",
+    "pixi.js": "^8.17.1",
+    "vite": "^8.0.7"
   }
 }

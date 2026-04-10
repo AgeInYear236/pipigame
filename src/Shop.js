@@ -91,8 +91,8 @@ export class Shop extends Container {
             { name: 'Bio-Slot Preparator', toolType: 'hoe', price: 50, count: 5, color: 0xaaaaaa, type: 'tool' },
             { name: 'Liquid Luck Dispenser', toolType: 'can', price: 40, count: 5, color: 0x00aaff, type: 'tool' },
             { name: 'Deep-Fluid Server', toolType: 'well', price: 500, count: 1, color: 0x555555, type: 'building' },
-            { name: 'Slot-Lime [LV]', type: 'green', bonus: 10, price: 25, count: 5, color: 0x32cd32 },
-            { name: 'Roulette-Cherry [HS]', type: 'red', bonus: 25, price: 60, count: 5, color: 0xff4500 },
+            { name: 'Slot-Lime [LV]', type: 'green', bonus: 3, price: 20, count: 5, color: 0x32cd32 },
+            { name: 'Roulette-Cherry [HS]', type: 'red', bonus: 13, price: 35, count: 3, color: 0xff4500 },
             { name: 'RTP Booster (+50%)', type: 'fertilizer', price: 30, count: 5, color: 0xeeeeee }
         ];
 
