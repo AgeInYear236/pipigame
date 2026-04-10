@@ -37,12 +37,12 @@ const assetsToLoad = [
     { alias: 'item_bucket', src: 'arts/item_bucket.png' },
     { alias: 'item_credits', src: 'arts/item_credits.png' },
 
-    { alias: 'bg_music', src: '/music/g.mp3' },
-    { alias: 'click_sfx', src: '/music/click.wav' },
-    { alias: 'select_sfx', src: '/music/select.wav' },
-    { alias: 'prop_sfx', src: '/music/prop.wav' },
-    { alias: 'prop2_sfx', src: '/music/goodRoll.wav' },
-    { alias: 'message_sfx', src: '/music/message.wav' }
+    { alias: 'bg_music', src: 'music/g.mp3' },
+    { alias: 'click_sfx', src: 'music/click.wav' },
+    { alias: 'select_sfx', src: 'music/select.wav' },
+    { alias: 'prop_sfx', src: 'music/prop.wav' },
+    { alias: 'prop2_sfx', src: 'music/goodRoll.wav' },
+    { alias: 'message_sfx', src: 'music/message.wav' }
 ];
 
 // Цикл для автоматической сборки стадий роста
