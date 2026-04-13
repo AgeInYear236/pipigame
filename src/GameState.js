@@ -1,28 +1,22 @@
 export const gameState = {
-    gold: 200,
+    gold: 3000,
     isGameOver: false,
+    introSequence: true,
+    timeMultiplier: 0.1,
+    lastInventoryCount: 0,
+    introMessageRead: false,
     quests: {
-        plowCells: {
-            active: false,
-            target: 60,
-            current: 0,
-            completed: false,
-            reward: 100
-        },
-        waterCells: {
-            active: false,
-            target: 50,
-            current: 0,
-            completed: false,
-            reward: 100
-        },
-        blueSeeds: {
-            active :false,
-            completed: false,
-            unlocked: false,
-            threshold: 500,
-            rewardSent: false
-        }
+        intro: { active: true, completed: false, title: "АВТОРИЗАЦИЯ", target: 1, current: 0 },
+        plowTutorial: { active: false, completed: false, title: "ПОДГОТОВКА ПОЧВЫ", target: 3, current: 0, reward: 50 },
+        plantTutorial: { active: false, completed: false, title: "ПЕРВАЯ ВЫСАДКА", target: 3, current: 0, reward: 50 },
+        waterTutorial: { active: false, completed: false, title: "ГИДРАТАЦИЯ", target: 3, current: 0, reward: 50 },
+        shopTutorial: { active: false, completed: false, title: "ЗАКУПКА", target: 1, current: 0, reward: 100 },
+        // Основные квесты
+        mainPlow: { active: false, completed: false, title: "МАСШТАБИРОВАНИЕ", target: 30, current: 0, reward: 300 },
+        mainWater: { active: false, completed: false, title: "ПОЛНЫЙ ЦИКЛ", target: 40, current: 0, reward: 400 },
+        goldHoarder: { active: false, completed: false, title: "ПЕРВЫЙ ТЫСЯЧНИК", threshold: 1000 },
+        burnMoney: { active: false, completed: false, title: "ОБНУЛЕНИЕ АКТИВОВ", target: 100 },
+        blueSeeds: { active: false, unlocked: false, title: "ПРОТОКОЛ: INDIGO" }
     },
     houseBuilt: false,
     houseQuestSent: false,
@@ -36,13 +30,6 @@ export const gameState = {
     nextDayTemp: 24,
     activeTab: 'messages',
     taxPaidToday: false,
-    inventory: [
-        { name: 'Slot-Lime [Low Volatility]', type: 'green', bonus: 3, color: 0x32cd32, count: 10 },
-        { name: 'Roulette-Cherry [High Stakes]', type: 'red', bonus: 13, color: 0xff4500, count: 3 },
-        { name: 'Bio-Slot Preparator', type: 'tool', toolType: 'hoe', color: 0xaaaaaa, count: 2 },
-        { name: 'Bucket Luck', type: 'tool', toolType: 'bucket', color: 0x708090,  count: 2},
-        { name: 'RTP Booster (+50%)', type: 'fertilizer', price: 30, count: 5, color: 0xffffff },
-        null,
-        null, null, null, null
-    ]
+    inventory: Array(10).fill(null), // Все слоты пусты
+
 };

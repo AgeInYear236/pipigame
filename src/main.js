@@ -13,8 +13,10 @@ import { Phone } from "./Phone.js";
 import { Environment } from "./Environment.js";
 import { MainMenu } from "./MainMenu.js";
 import { HintSystem } from "./HintSystem.js";
-import { sound } from '@pixi/sound'; // Импортируем модуль звука
+import { sound } from '@pixi/sound';
+import {QuestManager} from "./QuestManager"; // Импортируем модуль звука
 
+const NORMAL_TIME_SPEED = 5; // Твоя стандартная скорость (timeSpanMult)
 
 const assetsToLoad = [
     { alias: 'player', src: 'arts/operator.png' },
@@ -176,21 +178,21 @@ async function init() {
     const mapLayout = [
         [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        [2, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        [2, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        [2, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+        [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+        [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+        [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+        [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+        [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 2],
         [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-        [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+        [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 2],
         [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
     ];
     const mapWidthTiles = mapLayout[0].length;
@@ -292,6 +294,7 @@ async function init() {
         }
     };
 
+
     // COMMAND CENTER (Бывшие Руины)
     const housePrice = 1999;
     const houseContainer = new Container();
@@ -379,133 +382,85 @@ async function init() {
     const shop = new Shop(app, updateInvUI, debugConsole, goldText, tiles);
     ui.addChild(shop);
 
-    // КНОПКА ТЕРМИНАЛА (📟)
+// Теперь эти строки будут работать, так как Shop.js их не перебивает
+    shop.x = invContainer.x - 70;
+    shop.y = invContainer.y - 10; // Чуть приподнимем для красоты
+
+    shop.eventMode = 'static';
+    shop.cursor = 'pointer';
+
+// Проверка клика
+    shop.on('pointerdown', () => console.log("Клик по контейнеру магазина"));
+
+    // --- КНОПКА ТЕРМИНАЛА ---
     const phoneBtn = new Graphics()
         .roundRect(0, 0, 50, 50, 10)
         .fill(0x111111)
         .stroke({ color: 0x00ff00, width: 2 });
-    phoneBtn.x = window.innerWidth - 140;
-    phoneBtn.y = 20;
+
+    phoneBtn.x = invContainer.x + (10 * 55) + 10; // Добавил небольшой отступ 10px
+    phoneBtn.y = invContainer.y;
     phoneBtn.eventMode = 'static';
     phoneBtn.cursor = 'pointer';
+    phoneBtn.zIndex = 100;
 
     const phoneIcon = new Text({ text: "📟", style: { fontSize: 30 } });
     phoneIcon.anchor.set(0.5);
     phoneIcon.x = 25; phoneIcon.y = 25;
     phoneBtn.addChild(phoneIcon);
 
-    phoneBtn.on('pointerdown', () => phone.toggle());
+    phoneBtn.on('pointerdown', () => {
+        console.log("Terminal clicked"); // Для отладки
+        phone.toggle();
+        if (phone.visible) {
+            phone.markAsRead(); // Выключаем мигание при входе
+        }
+    });
     ui.addChild(phoneBtn);
+
+    ui.sortableChildren = true;
+
+    const questTitleStyle = new TextStyle({
+        fill: '#ffffff', // Белый для заголовка
+        fontSize: 14,
+        fontFamily: 'monospace',
+        fontWeight: 'bold',
+        dropShadow: { alpha: 0.3, blur: 2, distance: 1 }
+    });
+
+    const questProgressStyle = new TextStyle({
+        fill: '#ffd700', // Золотой для прогресса
+        fontSize: 18,
+        fontFamily: 'monospace',
+        fontWeight: 'bold',
+    });
+
+    const questUIContainer = new Container();
+    questUIContainer.x = 20;
+    questUIContainer.y = 110; // Под временем
+
+    const questTitleText = new Text({ text: "ТЕКУЩАЯ ЗАДАЧА:", style: questTitleStyle });
+    const questInfoText = new Text({ text: "НЕТ АКТИВНЫХ ЦЕЛЕЙ", style: questProgressStyle });
+    questInfoText.y = 20;
+
+    questUIContainer.addChild(questTitleText, questInfoText);
+    ui.addChild(questUIContainer);
+
+    const questManager = new QuestManager({
+        gameState,
+        phone,
+        debugConsole,
+        tiles,
+        goldText,
+        updateInvUI,
+        shop,
+        questInfoText
+    });
 
     const environment = new Environment(app, timeSystem);
     app.stage.addChild(environment);
     environment.zIndex = 1000;
 
-    // ВХОДЯЩИЕ СООБЩЕНИЯ (Lore-Friendly)
-    setTimeout(() => {
-        phone.addIncomingMessage("CORE_SYS", "Авторизация прошла успешно. Терминал готов к работе. Для помощи используйте I, для сохранения - [, ]");
-    }, 2000);
-
-    // 1. Приветственный протокол
-    setTimeout(() => {
-        phone.addIncomingMessage(
-            "PIT BOSS",
-            "Привет, оператор! Вижу, ты в сети. Чтобы начать игру, нужно подготовить 60 секторов (активируй их Slot-Preparator-ом). Сделаешь это — зачислю 100 CR на баланс!"
-        );
-        gameState.quests.plowCells.active = true;
-    }, 12000);
-
-    // 2. ФУНКЦИЯ МОНИТОРИНГА КВЕСТОВ
-    const checkQuests = () => {
-        const q = gameState.quests.plowCells;
-
-        if (q.active && !q.completed) {
-            const plowedCount = tiles.filter(t => t.type === 1).length;
-            q.current = plowedCount;
-
-            if (q.current >= q.target) {
-                q.completed = true;
-                q.active = false;
-                gameState.gold += q.reward;
-                goldText.text = `CREDITS: ${gameState.gold}`;
-
-                phone.addIncomingMessage("PIT BOSS", "Секторы активны. Почва готова к загрузке ассетов. Вот твои 100 кредитов.");
-                debugConsole.addMessage("КВЕСТ: Секторы подготовлены! +100 CR", "#00ff00", "🏆");
-
-                setTimeout(() => {
-                    startWaterQuest();
-                }, 10000);
-            }
-        }
-
-        // --- КВЕСТ 2: ОПТИМИЗАЦИЯ RTP (Полив) ---
-        const q2 = gameState.quests.waterCells;
-        if (q2.active && !q2.completed) {
-            const wateredCount = tiles.filter(t => t.type === 1 && t.isWatered).length;
-            q2.current = wateredCount;
-
-            if (q2.current >= q2.target) {
-                q2.completed = true;
-                q2.active = false;
-                gameState.gold += q2.reward;
-                goldText.text = `CREDITS: ${gameState.gold}`;
-
-                phone.addIncomingMessage("PIT BOSS", "Вижу, влажность в норме! Это повышает шансы на удачный спин. Держи еще 50 CR.");
-                debugConsole.addMessage("КВЕСТ: Гидратация завершена! +50 CR", "#00ff00", "🏆");
-                setTimeout(() => {
-                    startq3();
-                }, 5000);
-            }
-        }
-
-        const q3 = gameState.quests.blueSeeds;
-        if (q3.active && !q3.completed) {
-            phone.addIncomingMessage(
-                "CORE_ASSOCIATION",
-                "Впечатляющие результаты! 💹 Мы видим потенциал. Заработай 500 кредитов чистой прибыли, и мы откроем доступ к Indigo Pulse."
-            );
-        }
-
-        // 3. УСЛОВИЕ РАЗБЛОКИРОВКИ INDIGO PULSE
-        if (gameState.quests.blueSeeds && gameState.quests.blueSeeds.active && !gameState.quests.blueSeeds.unlocked) {
-            if (gameState.gold >= gameState.quests.blueSeeds.threshold) {
-                gameState.quests.blueSeeds.unlocked = true;
-                gameState.quests.blueSeeds.active = false;
-
-                const slot = gameState.inventory.findIndex(s => s === null);
-                if (slot !== -1) {
-                    gameState.inventory[slot] = {
-                        name: 'INDIGO PULSE [LEGACY]',
-                        type: 'blue',
-                        bonus: 50,
-                        color: 0x00aaff,
-                        count: 2
-                    };
-                }
-
-                phone.addIncomingMessage(
-                    "CORE_ASSOCIATION",
-                    "Грандиозно! 🎰 Лимит в 500 CR пройден. Indigo Pulse теперь в твоем распоряжении. Они уже в слотах терминала."
-                );
-
-                updateInvUI();
-                if (shop) shop.createShopWindow();
-                if (debugConsole) debugConsole.addMessage("СИСТЕМА: Доступ к Indigo Pulse открыт!", "#ffd700");
-            }
-        }
-    };
-
-    const startWaterQuest = () => {
-        phone.addIncomingMessage(
-            "PIT BOSS",
-            "Слушай, ассеты перегреваются! Используй LL-Dispenser или жди протокола 'Liquid Luck', чтобы охладить 50 секторов. Сделаешь — получишь кэшбек."
-        );
-        gameState.quests.waterCells.active = true;
-    };
-
-    const startq3 = () => {
-        gameState.quests.blueSeeds.active = true;
-    };
 
     function payTaxes() {
         const taxAmount = 50;
@@ -532,107 +487,255 @@ async function init() {
 
     let gameStarted = false;
 
+    /**
+     * Функция запуска начальной загрузки терминала
+     */
+    function startBootSequence(app, onComplete) {
+        const bootContainer = new Container();
+        app.stage.addChild(bootContainer);
+
+        // 1. Черный фон на весь экран
+        const bg = new Graphics()
+            .rect(0, 0, window.innerWidth, window.innerHeight)
+            .fill(0x000000);
+        bootContainer.addChild(bg);
+
+        // 2. Текст терминала
+        const style = new TextStyle({
+            fontFamily: 'monospace',
+            fontSize: 18,
+            fill: '#00ff00', // Классический зеленый терминал
+            wordWrap: true,
+            wordWrapWidth: window.innerWidth - 100
+        });
+
+        const terminalText = new Text({ text: "> ", style });
+        terminalText.x = 50;
+        terminalText.y = 50;
+        bootContainer.addChild(terminalText);
+
+        const fullMessage = "ОПЕРАТОР, ВИЖУ ТЫ В СЕТИ.\nЗНАЧИТ, МОЖЕМ НАЧИНАТЬ!\n\n> ДВИГАЙСЯ НА WASD\n> ПЕРЕКЛЮЧАЙ ПРЕДМЕТЫ НА 0-9\n> ИЗУЧАЙ ПРЕДМЕТЫ НА [I]\n\nВСЯ ЦЕННАЯ ИНФОРМАЦИЯ — В ТЕРМИНАЛЕ.\nУДАЧИ!\n\n[СИСТЕМА ГОТОВА. НАЖМИТЕ ЛЮБУЮ КЛАВИШУ ДЛЯ ВХОДА]";
+
+        let charIndex = 0;
+        const typeSpeed = 30; // Скорость печати (мс)
+
+        function type() {
+            if (charIndex < fullMessage.length) {
+                terminalText.text += fullMessage[charIndex];
+                charIndex++;
+                setTimeout(type, typeSpeed);
+            } else {
+                // Ожидаем нажатия клавиши для входа
+                window.addEventListener('keydown', () => {
+                    // Плавное исчезновение экрана
+                    let fade = setInterval(() => {
+                        bootContainer.alpha -= 0.05;
+                        if (bootContainer.alpha <= 0) {
+                            clearInterval(fade);
+                            bootContainer.destroy();
+                            onComplete(); // Запускаем игру и квесты
+                        }
+                    }, 20);
+                }, { once: true });
+            }
+        }
+
+        type();
+    }
+
     const startLevel = () => {
-        gameStarted = true;
-        // phone.addIncomingMessage("PIT BOSS", "Рад, что ты принял контракт. Начни с подготовки секторов, комиссия не ждет!");
+        // Вместо мгновенного старта запускаем эффект терминала
+        startBootSequence(app, () => {
+            // Этот код сработает после того, как игрок нажмет клавишу на черном экране
+            gameState.isGameOver = false;
+            gameStarted = true;
+
+            // Устанавливаем начальное замедление времени (эффект рассвета)
+            gameState.timeMultiplier = 0.05;
+
+            // Активируем квест на авторизацию
+            questManager.activateQuest('intro');
+
+            // Логика "ускорения" времени при первом открытии телефона
+            const originalToggle = phone.toggle.bind(phone);
+            phone.toggle = () => {
+                originalToggle();
+                if (!gameState.introMessageRead) {
+                    gameState.introMessageRead = true;
+                    gameState.timeMultiplier = NORMAL_TIME_SPEED; // Время пошло в нормальном темпе
+                    debugConsole.addMessage("СИСТЕМА: Поток времени синхронизирован (8x)", "#00ff00");
+                    // Квест intro в QuestManager сам переключится на следующий при проверке introMessageRead
+                }
+            };
+        });
     };
+
+    function updatePlayerMovement(dt) {
+        let nextX = player.x;
+        let nextY = player.y;
+        if (gameState.keys['KeyW']) nextY -= PLAYER_SPEED * dt;
+        if (gameState.keys['KeyS']) nextY += PLAYER_SPEED * dt;
+        if (gameState.keys['KeyA']) nextX -= PLAYER_SPEED * dt;
+        if (gameState.keys['KeyD']) nextX += PLAYER_SPEED * dt;
+
+        const checkWall = (tx, ty) => {
+            const gx = Math.floor(tx / TILE_SIZE);
+            const gy = Math.floor(ty / TILE_SIZE);
+            if (gx < 0 || gx >= mapWidthTiles || gy < 0 || gy >= mapHeightTiles) return true;
+            return tiles[gy * mapWidthTiles + gx].isSolid;
+        };
+
+        if (!checkWall(nextX, player.y)) player.x = nextX;
+        if (!checkWall(player.x, nextY)) player.y = nextY;
+    }
 
     // Переменные для контроля финала
     let glitchTimer = 0;
     let isGlitching = false;
     let finalStep = 0; // 0: глитч, 1: исчезновение, 2: затухание
 
+    function showFinalTerminal(app, onComplete) {
+        const finalContainer = new Container();
+        finalContainer.zIndex = 11000; // Поверх всего, даже оверлеев
+        app.stage.addChild(finalContainer);
+
+        const bg = new Graphics()
+            .rect(0, 0, window.innerWidth, window.innerHeight)
+            .fill(0x000000);
+        finalContainer.addChild(bg);
+
+        const style = new TextStyle({
+            fontFamily: 'monospace',
+            fontSize: 20,
+            fill: '#ff0000', // Зловещий красный вместо зеленого
+            wordWrap: true,
+            wordWrapWidth: window.innerWidth - 100
+        });
+
+        const terminalText = new Text({ text: "> ", style });
+        terminalText.x = 50; terminalText.y = 50;
+        finalContainer.addChild(terminalText);
+
+        const message = "АНАЛИЗ ЭФФЕКТИВНОСТИ: ЗАВЕРШЕН.\nСТАТУС: ОБЪЕКТ СЛИШКОМ УДАЧЛИВ.\n\nТЫ СТАЛ СЛИШКОМ УДАЧЛИВЫМ ДЛЯ ЭТОГО СЕКТОРА, ОПЕРАТОР.\nНАМ НЕ НУЖНЫ ПОБЕДИТЕЛИ. НАМ НУЖНЫ ИГРОКИ.\n\nСВЯЗЬ ПРЕРВАНА...";
+
+        let i = 0;
+        const type = () => {
+            if (i < message.length) {
+                terminalText.text += message[i];
+                i++;
+                setTimeout(type, 40);
+            } else {
+                setTimeout(() => {
+                    let fade = setInterval(() => {
+                        finalContainer.alpha -= 0.05;
+                        if (finalContainer.alpha <= 0) {
+                            clearInterval(fade);
+                            finalContainer.destroy();
+                            onComplete(); // Показываем финальный текст казино
+                        }
+                    }, 30);
+                }, 2000); // Даем 2 секунды дочитать
+            }
+        };
+        type();
+    }
+
     // Обнови функцию, чтобы она принимала флаг проигрыша
     function triggerGameOver(isLoss = false) {
+        if (gameState.isGameOver && isGlitching) return;
+
         gameState.isGameOver = true;
         isGlitching = true;
-
-        player.vx = 0; player.vy = 0;
 
         const errorCode = isLoss ? "DEBT_LIMIT_EXCEEDED" : "SYSTEM_CORRUPTION";
         if (debugConsole) debugConsole.addMessage(`CRITICAL_ERROR: ${errorCode}`, "#ff0000");
 
         setTimeout(() => {
-            player.visible = false;
-            finalStep = 1;
+            if (player) player.visible = false;
 
-            const statusMsg = isLoss ? "USER_LIQUIDATED" : "USER_SESSION: TERMINATED";
-            if (debugConsole) debugConsole.addMessage(statusMsg, "#ff0000");
-
-            setTimeout(() => {
-                isGlitching = false;
-                finalStep = 2;
-                startFinalFade(isLoss); // Передаем флаг дальше
-            }, 1500);
+            // Если игрок ПОБЕДИЛ (построил центр), выводим "злое" сообщение Пит Босса
+            if (!isLoss) {
+                isGlitching = false; // Останавливаем тряску для чтения
+                showFinalTerminal(app, () => {
+                    startFinalFade(isLoss);
+                });
+            } else {
+                // Если проиграл по долгам — обычный быстрый финал
+                finalStep = 1;
+                setTimeout(() => {
+                    isGlitching = false;
+                    startFinalFade(true);
+                }, 1500);
+            }
         }, 3000);
     }
 
-// В startFinalFade тоже прокидываем флаг
     function startFinalFade(isLoss) {
         const overlay = new Graphics()
             .rect(0, 0, app.screen.width, app.screen.height)
             .fill({ color: 0x000000 });
         overlay.alpha = 0;
-        ui.addChild(overlay);
+        overlay.zIndex = 9999; // Поверх всего
+        app.stage.addChild(overlay);
 
         const fadeTicker = (time) => {
-            overlay.alpha += 0.005 * time.deltaTime;
+            overlay.alpha += 0.01 * time.deltaTime;
             if (overlay.alpha >= 1) {
                 app.ticker.remove(fadeTicker);
-                showCasinoText(isLoss); // Вызываем финал с нужным текстом
+                showCasinoText(isLoss);
             }
         };
         app.ticker.add(fadeTicker);
     }
 
     function showCasinoText(isLoss = false) {
-        setTimeout(() => {
-            const casinoStyle = new TextStyle({
-                fontFamily: '"Verdana", "Geneva", sans-serif',
-                fontSize: 50,
-                fill: '#ff0000',
-                fontWeight: '900',
-                align: 'center',
-                stroke: {color: '#000000', width: 10, join: 'round'},
-                dropShadow: {alpha: 0.5, blur: 15, color: '#ff0000', distance: 0},
-                lineHeight: 70
-            });
+        // Убедимся, что старые сообщения удалены
+        const casinoStyle = new TextStyle({
+            fontFamily: 'monospace', // Моноширинный лучше подходит под твой стиль
+            fontSize: 42,
+            fill: '#ff0000',
+            fontWeight: '900',
+            align: 'center',
+            stroke: { color: '#000000', width: 8, join: 'round' },
+            dropShadow: { alpha: 0.8, blur: 20, color: '#ff0000', distance: 0 },
+            lineHeight: 60
+        });
 
-            const finalMsg = new Text({
-                text: isLoss ? 'ОБЪЕКТ УТИЛИЗИРОВАН\nВАШ ДОЛГ ПРИНАДЛЕЖИТ НАМ' : 'НИКТО НЕ МОЖЕТ\nОБЫГРАТЬ КАЗИНО',
-                style: casinoStyle
-            });
+        const finalMsg = new Text({
+            text: isLoss ? 'ОБЪЕКТ УТИЛИЗИРОВАН\nВАШ ДОЛГ ПРИНАДЛЕЖИТ НАМ' : 'НИКТО НЕ МОЖЕТ\nОБЫГРАТЬ КАЗИНО',
+            style: casinoStyle
+        });
 
-            finalMsg.anchor.set(0.5);
-            finalMsg.x = app.screen.width / 2;
-            finalMsg.y = app.screen.height / 2;
+        finalMsg.anchor.set(0.5);
+        finalMsg.x = app.screen.width / 2;
+        finalMsg.y = app.screen.height / 2;
+        finalMsg.zIndex = 10000; // Самый высокий приоритет
+        finalMsg.alpha = 0;
 
-            // ПРАВКА: Добавляем ПРЯМО в app.stage, чтобы он был поверх UI и World
-            app.stage.addChild(finalMsg);
+        app.stage.addChild(finalMsg);
 
-            // ПРАВКА: Используем выделенный тикер, который НЕ блокируется флагом isGameOver
-            const textTicker = (time) => {
-                if (finalMsg.destroyed) return;
+        // Отдельный тикер анимации, который работает ВСЕГДА
+        const textAnim = (time) => {
+            if (finalMsg.destroyed) return;
 
-                // Простая анимация "дыхания"
-                const elapsed = performance.now() * 0.002;
-                finalMsg.scale.set(1 + Math.sin(elapsed) * 0.03);
+            // Плавное появление
+            if (finalMsg.alpha < 1) finalMsg.alpha += 0.02;
 
-                // Редкий глитч
-                if (Math.random() > 0.98) {
-                    finalMsg.x = (app.screen.width / 2) + (Math.random() - 0.5) * 20;
-                    finalMsg.alpha = 0.5;
-                } else {
-                    finalMsg.x = app.screen.width / 2;
-                    finalMsg.alpha = 1;
-                }
-            };
+            const elapsed = performance.now() * 0.003;
+            // Эффект пульсации
+            finalMsg.scale.set(1 + Math.sin(elapsed) * 0.05);
 
-            // Добавляем этот специфичный тикер в приложение
-            app.ticker.add(textTicker);
+            // Глитч эффект позиции
+            if (Math.random() > 0.97) {
+                finalMsg.x = (app.screen.width / 2) + (Math.random() - 0.5) * 30;
+                finalMsg.style.fill = Math.random() > 0.5 ? '#ffffff' : '#ff0000';
+            } else {
+                finalMsg.x = app.screen.width / 2;
+                finalMsg.style.fill = '#ff0000';
+            }
+        };
 
-            console.log("FINAL TEXT RENDERED:", finalMsg.text);
-        }, 800);
+        app.ticker.add(textAnim);
     }
 
     const mainMenu = new MainMenu(app, startLevel);
@@ -695,13 +798,33 @@ async function init() {
             return;
         }
 
-
-        checkQuests();
         environment.update(dt);
+        updatePlayerMovement(dt); // Твоя функция движения
+
+        timeSystem.update(dt * gameState.timeMultiplier, debugConsole);
+
+        if (gameState.introMessageRead) {
+            questManager.update();
+        }
+
+        if (phone.hasUnread) {
+            // Используем синус от времени для плавного мигания
+            // 0.005 — скорость мигания, можешь подправить
+            const blink = Math.abs(Math.sin(performance.now() * 0.005));
+
+            // Мигаем именно кнопкой терминала
+            phoneBtn.alpha = 0.3 + (blink * 0.7); // Пульсация от 0.3 до 1.0
+
+            // Можно добавить свечение рамки (если stroke настроен)
+            phoneBtn.tint = blink > 0.5 ? 0x00ff00 : 0x004400;
+        } else {
+            phoneBtn.alpha = 1;
+            phoneBtn.tint = 0xffffff; // Сброс тинта в обычный цвет
+        }
 
         // Время и Ночной Протокол
-        timeSystem.update(dt * timeSpanMult, debugConsole);
         timeText.text = `CYCLE ${timeSystem.day} | SYNC: ${timeSystem.getTimeString()}`;
+        questManager.update(); // Все квесты проверяются здесь
 
         // Списания (House Edge)
         if (timeSystem.hour === 0 && timeSystem.minute === 0 && Math.floor(timeSystem.timer) === 0) {
@@ -738,24 +861,6 @@ async function init() {
             });
         }
 
-        // Навигация оператора
-        let nextX = player.x;
-        let nextY = player.y;
-        if (gameState.keys['KeyW']) nextY -= PLAYER_SPEED * dt;
-        if (gameState.keys['KeyS']) nextY += PLAYER_SPEED * dt;
-        if (gameState.keys['KeyA']) nextX -= PLAYER_SPEED * dt;
-        if (gameState.keys['KeyD']) nextX += PLAYER_SPEED * dt;
-
-        const checkWall = (tx, ty) => {
-            const gx = Math.floor(tx / TILE_SIZE);
-            const gy = Math.floor(ty / TILE_SIZE);
-            if (gx < 0 || gx >= mapWidthTiles || gy < 0 || gy >= mapHeightTiles) return true;
-            return tiles[gy * mapWidthTiles + gx].isSolid;
-        };
-
-        if (!checkWall(nextX, player.y)) player.x = nextX;
-        if (!checkWall(player.x, nextY)) player.y = nextY;
-
         // Y-Sorting (Сортировка глубины)
         entityLayer.children.sort((a, b) => {
             const aPos = (a === player) ? a.y : a.y + TILE_SIZE;
@@ -771,7 +876,7 @@ async function init() {
             setTimeout(() => {
                 phone.addIncomingMessage(
                     "PIT BOSS",
-                    "Доброе утро! Слушай, я видел те руины... Сердце кровью обливается. Давай восстановим Command Center. Материалы обойдутся в 1999 CR, но хакер без базы — это просто любитель!"
+                    "На твоей территории есть заброшенный командный центр. Для развития было бы неплохо его восстановить. Материалы обойдутся в 1999 CR, но я уверен, тебе это пригодится!"
                 );
             }, 5000);
         }
@@ -781,13 +886,27 @@ async function init() {
     window.addEventListener('resize', () => {
         app.renderer.resize(window.innerWidth, window.innerHeight);
         nightOverlay.clear().rect(0, 0, window.innerWidth, window.innerHeight).fill(0x050515);
-        invContainer.x = (window.innerWidth - (10 * 55)) / 2;
-        invContainer.y = window.innerHeight - 70;
+
+        // Пересчитываем центр для инвентаря
+        const invX = (window.innerWidth - (10 * 55)) / 2;
+        const invY = window.innerHeight - 70;
+
+        invContainer.x = invX;
+        invContainer.y = invY;
+
+        // Привязываем кнопки к новым координатам инвентаря
+        shop.x = invX - 70;
+        shop.y = invY;
+
+        phoneBtn.x = invX + (10 * 55);
+        phoneBtn.y = invY;
+
         slotText.x = window.innerWidth / 2;
         itemLabel.x = window.innerWidth / 2;
-        shop.resize();
-        phoneBtn.x = window.innerWidth - 140;
-        phone.resize();
+
+        // Если у shop и phone есть свои внутренние методы resize, вызываем их
+        if (shop.resize) shop.resize();
+        if (phone.resize) phone.resize();
     });
 
     // СИСТЕМА ДАМПОВ (Сохранения)
@@ -814,6 +933,9 @@ async function init() {
             }
         }
     });
+
 }
+
+
 
 init();

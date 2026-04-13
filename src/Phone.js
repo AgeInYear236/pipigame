@@ -111,6 +111,8 @@ export class Phone extends Container {
         });
 
         this.visible = false;
+        this.hasUnread = false;
+        this.blinkTimer = 0;
         this.resize();
     }
 
@@ -188,6 +190,9 @@ export class Phone extends Container {
         this.messages.unshift(msg);
         if (this.isOpen && this.listContainer.visible) this.renderMessages();
         if (!this.isOpen && this.debugConsole) this.debugConsole.addMessage(`ТЕРМИНАЛ: Новое СМС!`, "#00aaff"); // Тематический текст
+        if (!this.visible) { // Если телефон закрыт
+            this.hasUnread = true;
+        }
     }
 
     renderMessages() {
@@ -238,6 +243,11 @@ export class Phone extends Container {
         else this.toggle();
     }
 
+    markAsRead() {
+        this.hasUnread = false;
+        this.alpha = 1; // Возвращаем полную видимость
+    }
+
     toggle() {
         this.isOpen = !this.isOpen;
         this.visible = this.isOpen;
@@ -250,4 +260,7 @@ export class Phone extends Container {
         this.x = window.innerWidth - 270;
         this.y = 100;
     }
+
+
 }
+

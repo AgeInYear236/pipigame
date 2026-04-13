@@ -10,9 +10,6 @@ export class Shop extends Container {
         this.goldText = goldText;
         this.allTiles = allTiles;
 
-        this.x = window.innerWidth - 80;
-        this.y = 20;
-
         // Иконка корзины (терминала покупок)
         this.icon = new Graphics()
             .roundRect(0, 0, 60, 60, 10)
@@ -55,26 +52,49 @@ export class Shop extends Container {
         });
 
         this.createShopWindow();
+
+        this.on('wheel', (e) => {
+            if (!this.shopWindow.visible) return;
+
+            const scrollSpeed = 30;
+            // Двигаем catalogList относительно scrollArea
+            this.catalogList.y -= e.deltaY > 0 ? scrollSpeed : -scrollSpeed;
+
+            // Ограничения прокрутки
+            const minScroll = 0; // Верхняя граница
+            const maxScroll = Math.min(0, (this.shopHeight - 20) - this.catalogList.height);
+
+            if (this.catalogList.y > minScroll) this.catalogList.y = minScroll;
+            if (this.catalogList.y < maxScroll) this.catalogList.y = maxScroll;
+        });
+
     }
 
     createShopWindow() {
         this.shopWindow.removeChildren();
 
+        const windowWidth = 280;
+        const windowHeight = 450;
+        const offsetTop = -470; // На сколько окно поднято над кнопкой
+
+        // 1. ФОН ОКНА
         const bg = new Graphics()
-            .roundRect(-220, 70, 280, 450, 15)
+            .roundRect(0, offsetTop, windowWidth, windowHeight, 15)
             .fill({ color: 0x000000, alpha: 0.9 })
-            .stroke({ color: 0x00aaff, width: 2 }); // Сменил на синий неон
+            .stroke({ color: 0x00aaff, width: 2 });
         this.shopWindow.addChild(bg);
 
+        // 2. МАСКА (теперь она точно там же, где контент)
         const mask = new Graphics()
-            .roundRect(-215, 80, 270, this.shopHeight, 10)
+            .roundRect(5, offsetTop + 10, windowWidth - 10, windowHeight - 20, 10)
             .fill(0xffffff);
         this.shopWindow.addChild(mask);
 
+        // 3. КОНТЕЙНЕР ПРОКРУТКИ
         this.scrollArea = new Container();
-        this.scrollArea.x = -210;
-        this.scrollArea.y = 85;
-        this.scrollArea.mask = mask;
+        this.scrollArea.x = 10;
+        this.scrollArea.y = offsetTop + 15;
+        this.scrollArea.mask = mask; // Включаем обратно
         this.shopWindow.addChild(this.scrollArea);
 
         this.catalogList = new Container();
@@ -83,6 +103,7 @@ export class Shop extends Container {
         this.renderCatalog();
         this.addChild(this.shopWindow);
     }
+
 
     renderCatalog() {
         this.catalogList.removeChildren();
@@ -121,10 +142,14 @@ export class Shop extends Container {
     }
 
     buyItem(conf) {
+        console.log("Мой менеджер квестов:", this.questManager);
+        // 1. Проверка золота
         if (gameState.gold < conf.price) {
             this.debugConsole?.addMessage("[ОШИБКА]: Баланс ниже минимальной ставки!", "#ff4444");
             return;
         }
+
+        // 2. Логика для постройки колодца (Deep-Fluid Server)
         if (conf.toolType === 'well') {
             if (gameState.hasWell) {
                 this.debugConsole?.addMessage("[ОТКАЗ]: Сервер уже активен!", "#ffaa00");
@@ -132,36 +157,53 @@ export class Shop extends Container {
             }
             const grassTiles = this.allTiles.filter(t => t.type === 0);
             if (grassTiles.length > 0) {
-                gameState.gold -= conf.price;
-                this.goldText.text = `CREDITS: ${gameState.gold}`;
+                this.executePurchase(conf); // Выносим общую логику списания денег
                 gameState.hasWell = true;
                 const randomTile = grassTiles[Math.floor(Math.random() * grassTiles.length)];
                 randomTile.type = 3;
                 randomTile.updateVisual();
                 this.debugConsole?.addMessage("Deep-Fluid Server онлайн!", "#00ffff", "📡");
-                this.updateInvUI();
+
             } else {
                 this.debugConsole?.addMessage("[ОШИБКА]: Нет свободного сектора!", "#ff4444");
             }
             return;
         }
 
-        let slot = gameState.inventory.findIndex(s => s && s.type === conf.type && conf.type !== 'tool');
-        if (slot === -1) slot = gameState.inventory.findIndex(s => s === null);
+        // 3. Логика для предметов и инструментов
+        // Сначала ищем, есть ли уже такой предмет (чтобы стакать семена или не покупать вторую тяпку)
+        let slot = gameState.inventory.findIndex(s => s && s.name === conf.name);
 
-        if (slot !== -1) {
-            gameState.gold -= conf.price;
-            this.goldText.text = `CREDITS: ${gameState.gold}`;
-            if (gameState.inventory[slot]) {
-                gameState.inventory[slot].count += conf.count;
-            } else {
-                gameState.inventory[slot] = { ...conf };
-            }
-            this.updateInvUI();
-            this.debugConsole?.addMessage(`ПОДТВЕРЖДЕНО: Получен ${conf.name}`, "#4caf50");
+        // Если это не инструмент и предмет найден — стакаем
+        if (slot !== -1 && conf.type !== 'tool') {
+            this.executePurchase(conf);
+            gameState.inventory[slot].count += conf.count;
+            this.afterPurchase();
+            return;
+        }
+
+        // Если предмета нет, ищем пустой слот
+        let emptySlot = gameState.inventory.findIndex(s => s === null);
+        if (emptySlot !== -1) {
+            this.executePurchase(conf);
+            gameState.inventory[emptySlot] = { ...conf };
+            this.afterPurchase();
         } else {
             this.debugConsole?.addMessage("[ОТКАЗ]: Слот-хранилище перегружено.", "#ff4444");
         }
+    }
+
+// Вспомогательные методы для чистоты кода
+    executePurchase(conf) {
+        gameState.gold -= conf.price;
+        this.goldText.text = `CREDITS: ${gameState.gold}`;
+    }
+
+    afterPurchase() {
+        this.updateInvUI();
+        this.debugConsole?.addMessage("ТРАНЗАКЦИЯ ПОДТВЕРЖДЕНА", "#4caf50");
+        // Обязательно уведомляем менеджер квестов!
+
     }
 
     toggleShop() {
@@ -174,6 +216,5 @@ export class Shop extends Container {
     }
 
     resize() {
-        this.x = window.innerWidth - 80;
     }
 }

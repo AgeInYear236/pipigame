@@ -77,6 +77,6 @@ export class HintSystem extends Container {
 
         // Авто-скрытие после анализа
         if (this.timeout) clearTimeout(this.timeout);
-        this.timeout = setTimeout(() => { this.visible = false; }, 3000);
+        this.timeout = setTimeout(() => { this.visible = false; }, 5000);
     }
 }

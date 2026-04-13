@@ -104,7 +104,7 @@ export class Tile extends Container {
 
     async handleClick() {
         if (gameState.isGameOver) return; // Запрещаем любые действия
-        if (this.isSolid || this.type === 4 || gameState.isSpinning) return;
+        if (this.isSolid || gameState.isSpinning) return;
 
         // Проверка дистанции до игрока
         const dx = (this.x + this.tileSize / 2) - this.player.x;
@@ -112,6 +112,21 @@ export class Tile extends Container {
         if (Math.sqrt(dx * dx + dy * dy) > this.tileSize * 2.5) return;
 
         const item = gameState.inventory[gameState.selectedSlot];
+
+
+        if (this.type === 4) {
+            // Выводим ошибку в консоль игры (debugConsole)
+            if (this.debugConsole) {
+                this.debugConsole.addMessage("CRITICAL ERROR: НУЖНО ПОСТРОИТЬ КОМАНДНЫЙ ЦЕНТР", "#ff0000", "🚫");
+            }
+
+            // Можно добавить эффект "тряски" для пугала, чтобы подчеркнуть отказ
+            this.playErrorAnimation();
+            return; // Прерываем выполнение, чтобы не сработали другие инструменты
+        }
+
+
+
 
         // 4. СБОР (Спин)
         if (this.isGrowing && this.plantedData?.stage === 3) {
@@ -156,16 +171,18 @@ export class Tile extends Container {
             return; // Выходим, чтобы не сработали другие логики клика
         }
 
-        if (this.type === 1 && item.type === 'fertilizer') {
-            if (!this.isFertilized) {
-                this.isFertilized = true;
-                this.consumeItem(item); // Уменьшаем количество
-                this.updateVisual();
-                if (this.debugConsole) this.debugConsole.addMessage("RTP BOOSTER: ШАНС ЗАНОСА УВЕЛИЧЕН", "#00ff00");
-            } else {
-                this.debugConsole?.addMessage("СЕКТОР УЖЕ ОПТИМИЗИРОВАН", "#aaaaaa");
+        if (this.type === 1) {
+            if (item.type === 'fertilizer') {
+                if (!this.isFertilized) {
+                    this.isFertilized = true;
+                    this.consumeItem(item); // Уменьшаем количество
+                    this.updateVisual();
+                    if (this.debugConsole) this.debugConsole.addMessage("RTP BOOSTER: ШАНС ЗАНОСА УВЕЛИЧЕН", "#00ff00");
+                } else {
+                    this.debugConsole?.addMessage("СЕКТОР УЖЕ ОПТИМИЗИРОВАН", "#aaaaaa");
+                }
+                return; // ОБЯЗАТЕЛЬНО выходим, чтобы не сработала посадка ниже!
             }
-            return; // ОБЯЗАТЕЛЬНО выходим, чтобы не сработала посадка ниже!
         }
 
         // 1. АКТИВАЦИЯ СЕКТОРА (Preparator / Hoe)
@@ -204,7 +221,20 @@ export class Tile extends Container {
             return;
         }
 
+    }
 
+    playErrorAnimation() {
+        // Короткое дрожание спрайта пугала
+        const originalX = this.x;
+        let count = 0;
+        const interval = setInterval(() => {
+            this.x = originalX + (Math.random() - 0.5) * 5;
+            count++;
+            if (count > 5) {
+                clearInterval(interval);
+                this.x = originalX;
+            }
+        }, 50);
     }
 
     consumeItem(item) {
