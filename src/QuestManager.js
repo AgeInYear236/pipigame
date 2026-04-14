@@ -31,7 +31,7 @@ export class QuestManager {
         // 1. ВСТУПЛЕНИЕ
         if (q.intro.active && this.gameState.introMessageRead) {
             this.completeQuest('intro',
-                "Система активна. За подготовку почвы ты получишь 50 золотых. Я выдал тебе Slot-Preparator. Вспахай 3 сектора, чтобы продолжить.",
+                "Система активна. За подготовку почвы ты получишь 50 кредитов. Я выдал тебе Slot-Preparator. Вспахай 3 сектора, чтобы продолжить.",
                 { name: 'Bio Slot-Preparator', toolType: 'hoe', count: 5 }, "PIT BOSS"
             );
             this.activateQuest('plowTutorial');
@@ -42,7 +42,7 @@ export class QuestManager {
             q.plowTutorial.current = this.tiles.filter(t => t.type === 1).length;
             if (q.plowTutorial.current >= q.plowTutorial.target) {
                 this.completeQuest('plowTutorial',
-                    "Почва готова! Твои 50 золотых зачислены. За посадку ассетов получишь еще 50. Я выдал семена, посади их в подготовленные клетки.",
+                    "Почва готова! Твои 50 кредитов зачислены. За посадку ассетов получишь еще 50. Я выдал семена, посади их в подготовленные клетки.",
                     { name: 'Green Seeds', type: 'green', count: 10, bonus: 3 }, "PIT BOSS"
                 );
                 this.activateQuest('plantTutorial');
@@ -54,7 +54,7 @@ export class QuestManager {
             q.plantTutorial.current = this.tiles.filter(t => t.plantedData).length;
             if (q.plantTutorial.current >= q.plantTutorial.target) {
                 this.completeQuest('plantTutorial',
-                    "Ассеты в системе. Зачислил 50 золота. За полив выдам еще 50. Возьми Liquid Dispenser и полей свои ростки.",
+                    "Ассеты в системе. Зачислил 50 кредитов. За полив выдам еще 50. Возьми **Liquid Dispenser** и полей свои ростки.",
                     { name: 'Liquid Luck Dispenser', toolType: 'can', count: 3 }, "PIT BOSS"
                 );
                 this.activateQuest('waterTutorial');
@@ -66,14 +66,13 @@ export class QuestManager {
             q.waterTutorial.current = this.tiles.filter(t => t.type === 1 && t.isWatered).length;
             if (q.waterTutorial.current >= q.waterTutorial.target) {
                 this.completeQuest('waterTutorial',
-                    "Влажность в норме! +50 золота. Теперь проверь магазин. За первую покупку любого предмета я дам тебе 100 золота. Открой Shop и купи что-нибудь. Кстати, эти Диспенсеры очень часто выъодят из строя. Дам тебе проверенное средство - Shiny Coin Bucket!"
+                    "Влажность в норме! +50 кредитов. Теперь проверь магазин. За первую покупку любого предмета я дам тебе 100 кредитов. **Открой Shop и купи что-нибудь**. Кстати, эти Диспенсеры очень часто выъодят из строя. Дам тебе проверенное средство - Shiny Coin Bucket!"
                 , { name: 'Shiny Coin Bucket', toolType: 'bucket', count: 5 }, "PIT BOSS"
                 );
                 this.activateQuest('shopTutorial');
             }
         }
 
-        // 5. ОБУЧЕНИЕ: МАГАЗИН (Проверяем, уменьшилось ли золото или изменился инвентарь)
         // Для простоты: квест завершится, как только игрок что-то купит
         if (q.shopTutorial.active) {
             // Считаем, сколько всего предметов сейчас в инвентаре (не пустых слотов)
@@ -82,7 +81,7 @@ export class QuestManager {
             if (currentInvCount > this.gameState.lastInventoryCount || this.gameState.hasWell) {
                 // ФИНАЛЬНОЕ СООБЩЕНИЕ ОБУЧЕНИЯ
                 this.completeQuest('shopTutorial',
-                    "Базовый софт настроен, Оператор. Послденее напутствие: используй удобрения, чтобы повысить вероятность заноса (RTP) на 50%. И не забывай про комиссию — система списывает 50 кредитов каждые сутки! Теперь работай: вспахай 30 клеток для расширения мощностей.",
+                    "Базовый софт настроен, Оператор. Послденее напутствие: используй удобрения, чтобы повысить вероятность заноса (RTP) на 50%. И не забывай про комиссию — ~~система списывает 50 кредитов каждые сутки! Когда баланс закончится - твоя работа будет окончена!~~ **Теперь работай: вспахай 30 клеток для расширения мощностей.**",
                     null, "PIT BOSS"
                 );
 
@@ -99,7 +98,7 @@ export class QuestManager {
             q.mainPlow.current = this.tiles.filter(t => t.type === 1).length;
             if (q.mainPlow.current >= q.mainPlow.target) {
                 this.completeQuest('mainPlow',
-                    "Масштабирование завершено! Лови 300 золотых. Теперь нужно обеспечить полив 40 клеток для стабильного профита. За это дам 400.", null, "PIT BOSS"
+                    "Масштабирование завершено! Лови 300 кредитов. **Теперь нужно обеспечить полив 40 клеток для стабильного профита.** За это дам 400.", null, "PIT BOSS"
                 );
                 this.activateQuest('mainWater');
             }
@@ -110,7 +109,7 @@ export class QuestManager {
             q.mainWater.current = this.tiles.filter(t => t.type === 1 && t.isWatered).length;
             if (q.mainWater.current >= q.mainWater.target) {
                 this.completeQuest('mainWater',
-                    "Система охлаждена! Зачислил 400 золотых. Твоя финальная цель — скопить 1000 золота для выхода на новый уровень. Работай!", null, "PIT BOSS"
+                    "Система охлаждена! Зачислил 400 кредитов. Твоя финальная цель — **скопить 1000 кредитов для выхода на новый уровень.** Работай!", null, "PIT BOSS"
                 );
                 this.activateQuest('goldHoarder');
                 gameState.houseQuestSent = true;
@@ -127,7 +126,7 @@ export class QuestManager {
                 // Через небольшую паузу пишет CORE_ASSOCIATION
                 setTimeout(() => {
                     this.phone.addIncomingMessage("CORE_ASSOCIATION",
-                        "Твои активы слишком заметны. Чтобы получить доступ к [INDIGO PULSE], ты должен очистить баланс. Потрать всё! Баланс должен быть меньше 100 CR."
+                        "Твои активы слишком заметны. Чтобы получить доступ к [INDIGO PULSE], ты должен очистить баланс. **Потрать всё!** Баланс должен быть меньше 100 CR."
                     );
                     this.activateQuest('burnMoney');
                 }, 5000);

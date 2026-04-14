@@ -55,17 +55,8 @@ const assetsToLoad = [
 });
 
 export const textures = await Assets.load(assetsToLoad);
-if (sound.exists('bg_music')) {
-    sound.play('bg_music', {
-        loop: true,
-        volume: 0.02 // 30% громкости
-    });
-}
+
 const app = new Application();
-await app.init({
-    resizeTo: window,
-    backgroundColor: '#0a1a0a'
-});
 
 const timeSpanMult = 8;
 
@@ -422,7 +413,7 @@ async function init() {
 
     const questTitleStyle = new TextStyle({
         fill: '#ffffff', // Белый для заголовка
-        fontSize: 14,
+        fontSize: 20,
         fontFamily: 'monospace',
         fontWeight: 'bold',
         dropShadow: { alpha: 0.3, blur: 2, distance: 1 }
@@ -430,7 +421,7 @@ async function init() {
 
     const questProgressStyle = new TextStyle({
         fill: '#ffd700', // Золотой для прогресса
-        fontSize: 18,
+        fontSize: 22,
         fontFamily: 'monospace',
         fontWeight: 'bold',
     });
@@ -487,9 +478,6 @@ async function init() {
 
     let gameStarted = false;
 
-    /**
-     * Функция запуска начальной загрузки терминала
-     */
     function startBootSequence(app, onComplete) {
         const bootContainer = new Container();
         app.stage.addChild(bootContainer);
@@ -543,8 +531,41 @@ async function init() {
         type();
     }
 
+    const audioCtx = new AudioContext();
+
+    document.addEventListener('click', () => {
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    });
+
+
+
+    const startGlobalMusic = () => {
+        if (sound.exists('bg_music')) {
+            if (sound.context.audioContext.state === 'suspended') {
+                sound.context.audioContext.resume();
+            }
+            sound.play('bg_music', { loop: true, volume: 0.05 });
+        }
+    };
+
+    const unlockAudio = async () => {
+        if (sound.context.audioContext.state === 'suspended') {
+            await sound.context.audioContext.resume();
+        }
+    };
+
     const startLevel = () => {
         // Вместо мгновенного старта запускаем эффект терминала
+        startGlobalMusic(); // Запускаем здесь!
+
+        unlockAudio().then(() => {
+            if (sound.exists('bg_music')) {
+                sound.play('bg_music', { loop: true, volume: 0.05 });
+            }
+        });
+
         startBootSequence(app, () => {
             // Этот код сработает после того, как игрок нажмет клавишу на черном экране
             gameState.isGameOver = false;
@@ -740,6 +761,20 @@ async function init() {
 
     const mainMenu = new MainMenu(app, startLevel);
     app.stage.addChild(mainMenu);
+
+    const resumeAudio = async () => {
+        if (sound.context.paused) {
+            await sound.context.audioContext.resume();
+            console.log("🔊 Звуковой движок проснулся!");
+        }
+    };
+
+    window.addEventListener('click', () => {
+        // Это "пинок" для Firefox
+        if (sound.context.audioContext.state === 'suspended') {
+            sound.context.audioContext.resume();
+        }
+    }, { once: true });
 
     // 7. КОНТРОЛЛЕР ВВОДА
     window.addEventListener('keydown', (e) => {

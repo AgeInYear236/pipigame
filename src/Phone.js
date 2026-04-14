@@ -84,6 +84,11 @@ export class Phone extends Container {
         this.detailBodyTxt.x = 15; this.detailBodyTxt.y = 50;
         this.detailContainer.addChild(this.detailBodyTxt);
 
+        this.detailBodyContainer = new Container();
+        this.detailBodyContainer.x = 15;
+        this.detailBodyContainer.y = 50;
+        this.detailContainer.addChild(this.detailBodyContainer);
+
         // --- ЭКРАН ПОГОДЫ ---
         this.weatherContainer = new Container();
         this.weatherContainer.visible = false;
@@ -220,13 +225,91 @@ export class Phone extends Container {
         });
     }
 
+    // Метод для отрисовки текста с выделением
+    renderFormattedText(text) {
+        this.detailBodyContainer.removeChildren();
+
+        // Новая регулярка: ищет либо **текст**, либо ~~текст~~
+        const parts = text.split(/(\*\*.*?\*\*|~~.*?~~)/g);
+
+        let cursorX = 0;
+        let cursorY = 0;
+        const lineHeight = 18;
+        const maxWidth = this.phoneWidth - 30;
+
+        parts.forEach(part => {
+            if (!part) return;
+
+            // Определяем тип форматирования
+            const isQuest = part.startsWith("**") && part.endsWith("**");
+            const isDanger = part.startsWith("~~") && part.endsWith("~~");
+
+            // Очищаем текст от символов разметки
+            let cleanPart = part;
+            if (isQuest) cleanPart = part.replace(/\*\*/g, "");
+            if (isDanger) cleanPart = part.replace(/~~/g, "");
+
+            const words = cleanPart.split(" ");
+
+            words.forEach((word, index) => {
+                if (word === "" && index !== 0) return;
+
+                // Выбираем стиль на основе типа текста
+                let fillColor = '#cccccc'; // По умолчанию серый
+                let fontWeight = 'normal';
+                let shadowColor = null;
+
+                if (isQuest) {
+                    fillColor = '#00aaff'; // Синий для квестов
+                    fontWeight = '900';
+                    shadowColor = '#00aaff';
+                } else if (isDanger) {
+                    fillColor = '#ff4444'; // Ярко-красный для опасности
+                    fontWeight = '900';
+                    shadowColor = '#ff4444';
+                }
+
+                const wordText = new Text({
+                    text: word + (index < words.length - 1 ? " " : ""),
+                    style: {
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                        fill: fillColor,
+                        fontWeight: fontWeight,
+                    }
+                });
+
+                // Проверка переноса строки
+                if (cursorX + wordText.width > maxWidth) {
+                    cursorX = 0;
+                    cursorY += lineHeight;
+                }
+
+                wordText.x = cursorX;
+                wordText.y = cursorY;
+
+                // Добавляем свечение для выделенных фрагментов
+                if (shadowColor) {
+                    wordText.style.dropShadow = { color: shadowColor, blur: 3, distance: 0 };
+                }
+
+                this.detailBodyContainer.addChild(wordText);
+                cursorX += wordText.width;
+            });
+        });
+    }
+
+// Обновленный метод открытия сообщения
     openMessageDetail(messageId) {
         const msg = this.messages.find(m => m.id === messageId);
         if (!msg) return;
         msg.isRead = true;
         this.currentOpenedMessage = msg;
         this.detailSenderTxt.text = msg.sender;
-        this.detailBodyTxt.text = msg.text;
+
+        // Вызываем наш новый парсер вместо прямой установки текста
+        this.renderFormattedText(msg.text);
+
         this.listContainer.visible = false;
         this.detailContainer.visible = true;
     }

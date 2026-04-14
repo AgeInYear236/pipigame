@@ -1,5 +1,5 @@
 export const gameState = {
-    gold: 3000,
+    gold: 100,
     isGameOver: false,
     introSequence: true,
     timeMultiplier: 0.1,

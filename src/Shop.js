@@ -13,7 +13,7 @@ export class Shop extends Container {
         // Иконка корзины (терминала покупок)
         this.icon = new Graphics()
             .roundRect(0, 0, 60, 60, 10)
-            .fill(0xffcc00)
+            .fill(0xffbb00)
             .stroke({ color: 0xffffff, width: 2 });
 
         const label = new Text({ text: "💰", style: { fontSize: 32 } }); // Сменил на мешок с деньгами/чип
